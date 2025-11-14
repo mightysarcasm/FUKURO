@@ -37,6 +37,14 @@ acceptBtn.addEventListener('click', () => {
     const isVideo = document.getElementById('service-video').checked;
     const isExistingProject = document.getElementById('existing-project').checked;
     
+    // *** INICIO DE CORRECCIÓN DE BUG DE URGENCIA ***
+    // Solo guardar el texto de la nota de urgencia SI es visible
+    const urgencyFeeNoteElement = document.getElementById('urgency-fee-note');
+    const urgencyNoteText = !urgencyFeeNoteElement.classList.contains('hidden') 
+                              ? urgencyFeeNoteElement.textContent 
+                              : ""; // Si está oculto, guarda un string vacío
+    // *** FIN DE CORRECCIÓN DE BUG DE URGENCIA ***
+
     const quoteDataForRedirect = {
         name: currentFormData.get('name'),
         email: currentFormData.get('email'),
@@ -46,7 +54,7 @@ acceptBtn.addEventListener('click', () => {
         total: currentFormData.get('cotizacion_estimada'),
         isExisting: isExistingProject,
         baseFee: parseFloat(currentFormData.get('calculated_base_fee')) || 0,
-        urgencyNote: document.getElementById('urgency-fee-note').textContent || "",
+        urgencyNote: urgencyNoteText, // Usar la variable corregida
         isAudio: isAudio,
         audioQty: currentFormData.get('audio_quantity'),
         audioMin: currentFormData.get('audio_min'),
