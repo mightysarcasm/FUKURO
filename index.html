@@ -8,9 +8,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Librería html2canvas (para PNG) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
     <!-- Three.js Library -->
     <script type="importmap">
         {
@@ -291,7 +288,7 @@
                     </div>
 
 
-                    <!-- Calculadora de Cotización (NUEVA LÓGICA DE CHECKBOX) -->
+                    <!-- Calculadora de Cotización (LÓGICA DE CHECKBOX) -->
                     <div id="quote-form-calculator" class="space-y-4">
                         <label class="form-label">[ SERVICIOS REQUERIDOS ]</label>
                         <p class="mb-2 text-yellow-300 text-sm">// La Tarifa Base de $1200 MXN se aplica una vez por proyecto.</p>
@@ -467,7 +464,7 @@
                 <!-- El resumen de la cotización se inyectará aquí -->
             </div>
             
-            <!-- Contenido solo para impresión -->
+            <!-- Contenido solo para impresión (para cotizacion.html) -->
             <div id="quote-summary-print-container" class="hidden">
                 <div class="text-center mb-6">
                     <h1 class="text-5xl font-bold">FUKURO</h1>
@@ -487,9 +484,7 @@
                 <button id="modify-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
                     [ MODIFICAR ]
                 </button>
-                <button id="print-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
-                    [ IMPRIMIR / GUARDAR ]
-                </button>
+                <!-- Botón de Imprimir/PNG eliminado -->
                 <button id="accept-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">
                     [ ACEPTAR Y ENVIAR ]
                 </button>
