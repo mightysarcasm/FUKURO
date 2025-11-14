@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // --- Lógica de UI ---
 let currentForm = null;
-let currentFormData = null;
+// let currentFormData = null; // ELIMINADO - Ya no guardamos el estado aquí
 
 // --- Lógica del Modal ---
 const modal = document.getElementById('quote-modal');
@@ -26,11 +26,57 @@ function hideModal() {
 
 modifyBtn.addEventListener('click', hideModal);
 modalOverlay.addEventListener('click', hideModal);
+
+// ** CORRECCIÓN: La lógica de envío ahora está TODA dentro del click **
 acceptBtn.addEventListener('click', () => {
-    if (currentFormData) {
-        sendFormToSpree(currentFormData);
+    // 1. Capturar los datos FRESCOS ahora
+    const currentFormData = new FormData(currentForm);
+    
+    // 2. Construir el objeto de datos FRESCO para sessionStorage
+    const isAudio = document.getElementById('service-audio').checked;
+    const isVideo = document.getElementById('service-video').checked;
+    const isExistingProject = document.getElementById('existing-project').checked;
+    
+    const quoteDataForRedirect = {
+        name: currentFormData.get('name'),
+        email: currentFormData.get('email'),
+        projectName: currentFormData.get('project-name'),
+        timeline: currentFormData.get('timeline'),
+        brief: currentFormData.get('brief'),
+        total: currentFormData.get('cotizacion_estimada'),
+        isExisting: isExistingProject,
+        baseFee: parseFloat(currentFormData.get('calculated_base_fee')) || 0,
+        urgencyNote: document.getElementById('urgency-fee-note').textContent || "",
+        isAudio: isAudio,
+        audioQty: currentFormData.get('audio_quantity'),
+        audioMin: currentFormData.get('audio_min'),
+        audioSec: currentFormData.get('audio_sec'),
+        audioFormat: currentFormData.get('format_av_audio'),
+        audioRes: currentFormData.get('resolution_av_audio'),
+        audioFee: parseFloat(currentFormData.get('calculated_audio_fee')) || 0,
+        isVideo: isVideo,
+        videoQty: currentFormData.get('video_quantity'),
+        videoMin: currentFormData.get('video_min'),
+        videoSec: currentFormData.get('video_sec'),
+        videoFormat: currentFormData.get('format_av_video'),
+        videoRes: currentFormData.get('resolution_av_video'),
+        videoFee: parseFloat(currentFormData.get('calculated_video_fee')) || 0
+    };
+
+    try {
+        sessionStorage.setItem('fukuroQuote', JSON.stringify(quoteDataForRedirect));
+    } catch (e) {
+        console.error("Error al guardar en sessionStorage:", e);
+        // Mostrar error en el modal
+        const statusDiv = document.getElementById('modal-status');
+        statusDiv.innerHTML = `<p class="text-red-500">-- ERROR: No se pudo guardar la sesión --</p><p>// ${e.message}</p>`;
+        return; // No continuar si no se puede guardar
     }
+
+    // 3. Enviar los datos FRESCOS a Formspree
+    sendFormToSpree(currentFormData);
 });
+
 
 // --- Lógica de Validación de Formulario Personalizada ---
 function validateForm() {
@@ -243,27 +289,29 @@ function handleGenerateQuote(event) {
         return;
     }
 
+    // Llenar campos ocultos de Formspree
     document.getElementById('form-replyto').value = document.getElementById('email').value;
     document.getElementById('form-subject').value = document.getElementById('project-name').value || 'Nueva Cotización FUKURO';
 
-    currentFormData = new FormData(currentForm);
+    // ** LÓGICA DE CAPTURA DE DATOS MOVIDA **
+    // Ya no se captura aquí, se captura al hacer clic en 'acceptBtn'
     
     const summaryDiv = document.getElementById('quote-summary');
     const isAudio = document.getElementById('service-audio').checked;
     const isVideo = document.getElementById('service-video').checked;
-    const baseFee = parseFloat(currentFormData.get('calculated_base_fee')) || 0;
-    const audioFee = parseFloat(currentFormData.get('calculated_audio_fee')) || 0;
-    const videoFee = parseFloat(currentFormData.get('calculated_video_fee')) || 0;
-    const isExistingProject = currentFormData.get('existing-project');
+    const baseFee = parseFloat(document.getElementById('calculated_base_fee').value) || 0;
+    const audioFee = parseFloat(document.getElementById('calculated_audio_fee').value) || 0;
+    const videoFee = parseFloat(document.getElementById('calculated_video_fee').value) || 0;
+    const isExistingProject = document.getElementById('existing-project').checked;
     
     let servicesSelected = [];
     if (isAudio) servicesSelected.push("Audio");
     if (isVideo) servicesSelected.push("Video");
 
     let summaryHTML = `
-        <p><strong class="text-gray-300">CLIENTE:</strong> ${currentFormData.get('name') || 'N/A'}</p>
-        <p><strong class="text-gray-300">EMAIL:</strong> ${currentFormData.get('email') || 'N/A'}</p>
-        <p><strong class="text-gray-300">PROYECTO:</strong> ${currentFormData.get('project-name') || 'N/A'}</p>
+        <p><strong class="text-gray-300">CLIENTE:</strong> ${document.getElementById('name').value || 'N/A'}</p>
+        <p><strong class="text-gray-300">EMAIL:</strong> ${document.getElementById('email').value || 'N/A'}</p>
+        <p><strong class="text-gray-300">PROYECTO:</strong> ${document.getElementById('project-name').value || 'N/A'}</p>
         <hr class="border-gray-500/50 my-2">
         <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
     `;
@@ -272,9 +320,9 @@ function handleGenerateQuote(event) {
         summaryHTML += `
             <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
                 <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
-                <p><strong class="text-gray-300">Cantidad:</strong> ${currentFormData.get('audio_quantity')}</p>
-                <p><strong class="text-gray-300">Duración (c/u):</strong> ${currentFormData.get('audio_min')}m ${currentFormData.get('audio_sec')}s</p>
-                <p><strong class="text-gray-300">Specs:</strong> ${currentFormData.get('format_av_audio') || 'N/A'} | ${currentFormData.get('resolution_av_audio') || 'N/A'}</p>
+                <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('audio_quantity').value}</p>
+                <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('audio_min').value}m ${document.getElementById('audio_sec').value}s</p>
+                <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_audio').value || 'N/A'} | ${document.getElementById('resolution_av_audio').value || 'N/A'}</p>
                 <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
             </div>
         `;
@@ -284,9 +332,9 @@ function handleGenerateQuote(event) {
         summaryHTML += `
             <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
                 <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
-                <p><strong class="text-gray-300">Cantidad:</strong> ${currentFormData.get('video_quantity')}</p>
-                <p><strong class="text-gray-300">Duración (c/u):</strong> ${currentFormData.get('video_min')}m ${currentFormData.get('video_sec')}s</p>
-                <p><strong class="text-gray-300">Specs:</strong> ${currentFormData.get('format_av_video') || 'N/A'} | ${currentFormData.get('resolution_av_video') || 'N/A'}</p>
+                <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('video_quantity').value}</p>
+                <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('video_min').value}m ${document.getElementById('video_sec').value}s</p>
+                <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_video').value || 'N/A'} | ${document.getElementById('resolution_av_video').value || 'N/A'}</p>
                 <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
             </div>
         `;
@@ -301,62 +349,28 @@ function handleGenerateQuote(event) {
          summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
     }
 
-    summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${currentFormData.get('timeline') || 'N/A'}</p>`;
+    summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${document.getElementById('timeline').value || 'N/A'}</p>`;
     
     const urgencyFeeNote = document.getElementById('urgency-fee-note');
-    let urgencyNoteText = "";
     if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
-        urgencyNoteText = urgencyFeeNote.textContent; // Guardar el texto
-        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyNoteText.split(': ')[1]}</p>`;
+        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
     }
 
     summaryHTML += `
-        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${currentFormData.get('cotizacion_estimada')}</p>
+        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${document.getElementById('hidden-quote').value}</p>
         <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
         
         <hr class="border-gray-500/50 my-2">
         <p><strong class="text-gray-300">BRIEF:</strong></p>
-        <p class="whitespace-pre-wrap">${currentFormData.get('brief') || 'N/A'}</p>
+        <p class="whitespace-pre-wrap">${document.getElementById('brief').value || 'N/A'}</p>
         <hr class="border-gray-500/50 my-2">
         <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
         <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
     `;
     
     summaryDiv.innerHTML = summaryHTML;
-
-    // *** NUEVA LÓGICA: Guardar datos en sessionStorage para la redirección ***
-    const quoteDataForRedirect = {
-        name: currentFormData.get('name'),
-        email: currentFormData.get('email'),
-        projectName: currentFormData.get('project-name'),
-        timeline: currentFormData.get('timeline'),
-        brief: currentFormData.get('brief'),
-        total: currentFormData.get('cotizacion_estimada'),
-        isExisting: isExistingProject,
-        baseFee: baseFee,
-        urgencyNote: urgencyNoteText,
-        isAudio: isAudio,
-        audioQty: currentFormData.get('audio_quantity'),
-        audioMin: currentFormData.get('audio_min'),
-        audioSec: currentFormData.get('audio_sec'),
-        audioFormat: currentFormData.get('format_av_audio'),
-        audioRes: currentFormData.get('resolution_av_audio'),
-        audioFee: audioFee,
-        isVideo: isVideo,
-        videoQty: currentFormData.get('video_quantity'),
-        videoMin: currentFormData.get('video_min'),
-        videoSec: currentFormData.get('video_sec'),
-        videoFormat: currentFormData.get('format_av_video'),
-        videoRes: currentFormData.get('resolution_av_video'),
-        videoFee: videoFee
-    };
-    try {
-        sessionStorage.setItem('fukuroQuote', JSON.stringify(quoteDataForRedirect));
-    } catch (e) {
-        console.error("Error al guardar en sessionStorage:", e);
-        // No detener el envío del formulario, solo fallará la redirección
-    }
-    // *** FIN DE LA NUEVA LÓGICA ***
+    
+    // Ya no se guarda en sessionStorage aquí
 
     showModal();
 }
