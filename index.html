@@ -1,258 +1,258 @@
 <!DOCTYPE html>
 <html lang="es-MX">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>FUKURO - A/V SYNTHESIS</title>
-	
-	<!-- Tailwind CSS -->
-	<script src="https://cdn.tailwindcss.com"></script>
-	
-	<!-- Three.js Library -->
-	<script type="importmap">
-		{
-			"imports": {
-				"three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
-				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
-			}
-		}
-	</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUKURO - A/V SYNTHESIS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Librería html2canvas (para PNG) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Three.js Library -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts (VT323 & DotGothic16 for Japanese) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=VT323&display=swap" rel="stylesheet">
 
-	<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-	
-	<!-- Google Fonts (VT323 & DotGothic16 for Japanese) -->
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados para la estética "acid" - TEMA BLANCO */
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #000000;
+            color: #e0e0e0; /* Color principal: Blanco LED */
+            overflow: hidden;
+        }
+        
+        /* Estilo para Katakana */
+        .katakana {
+            font-family: 'DotGothic16', monospace;
+            font-weight: 400;
+        }
 
-	<style>
-		/* Estilos personalizados para la estética "acid" - TEMA BLANCO */
-		body {
-			font-family: 'VT323', monospace;
-			background-color: #000000;
-			color: #e0e0e0; /* Color principal: Blanco LED */
-			overflow: hidden;
-		}
-		
-		/* Estilo para Katakana */
-		.katakana {
-			font-family: 'DotGothic16', monospace;
-			font-weight: 400;
-		}
+        #three-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            outline: none;
+        }
 
-		#three-canvas {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			z-index: -1;
-			outline: none;
-		}
+        /* Animación Glitch (Conserva colores "acid") */
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
+            20% { text-shadow: 1px 1px #ff00ff, -1px -1px #00ffff; transform: translate(-1px, 1px); }
+            40% { text-shadow: -2px 1px #ff00ff, 2px -1px #00ffff; transform: translate(1px, -1px); }
+            60% { text-shadow: 1px -2px #ff00ff, -1px 2px #00ffff; transform: translate(-1px, 1px); }
+            80% { text-shadow: -1px 2px #ff00ff, 1px -2px #00ffff; transform: translate(1px, -1px); }
+            100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
+        }
 
-		/* Animación Glitch (Conserva colores "acid") */
-		@keyframes glitch {
-			0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
-			20% { text-shadow: 1px 1px #ff00ff, -1px -1px #00ffff; transform: translate(-1px, 1px); }
-			40% { text-shadow: -2px 1px #ff00ff, 2px -1px #00ffff; transform: translate(1px, -1px); }
-			60% { text-shadow: 1px -2px #ff00ff, -1px 2px #00ffff; transform: translate(-1px, 1px); }
-			80% { text-shadow: -1px 2px #ff00ff, 1px -2px #00ffff; transform: translate(1px, -1px); }
-			100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
-		}
+        .glitch-text {
+            animation: glitch 0.5s cubic-bezier(.25, .46, .45, .94) both infinite;
+        }
 
-		.glitch-text {
-			animation: glitch 0.5s cubic-bezier(.25, .46, .45, .94) both infinite;
-		}
+        /* Sombra de "neón" ahora blanca */
+        .neon-shadow {
+            text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0, 0 0 20px #e0e0e0, 0 0 40px #e0e0e0;
+        }
 
-		/* Sombra de "neón" ahora blanca */
-		.neon-shadow {
-			text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0, 0 0 20px #e0e0e0, 0 0 40px #e0e0e0;
-		}
+        .content-box {
+            background-color: rgba(16, 16, 16, 0.75);
+            backdrop-filter: blur(10px) saturate(200%);
+            -webkit-backdrop-filter: blur(10px) saturate(200%);
+            border: 1px solid #e0e0e0; /* Borde Blanco */
+            box-shadow: 0 0 15px rgba(224, 224, 224, 0.3); /* Sombra Blanca */
+        }
 
-		.content-box {
-			background-color: rgba(16, 16, 16, 0.75);
-			backdrop-filter: blur(10px) saturate(200%);
-			-webkit-backdrop-filter: blur(10px) saturate(200%);
-			border: 1px solid #e0e0e0; /* Borde Blanco */
-			box-shadow: 0 0 15px rgba(224, 224, 224, 0.3); /* Sombra Blanca */
-		}
+        ::selection { background: #ff00ff; color: #000000; }
+        
+        .content-box-inner::-webkit-scrollbar { width: 8px; }
+        .content-box-inner::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
+        .content-box-inner::-webkit-scrollbar-thumb { background-color: #e0e0e0; border: 1px solid #000; } /* Scrollbar Blanca */
 
-		::selection { background: #ff00ff; color: #000000; }
-		
-		.content-box-inner::-webkit-scrollbar { width: 8px; }
-		.content-box-inner::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
-		.content-box-inner::-webkit-scrollbar-thumb { background-color: #e0e0e0; border: 1px solid #000; } /* Scrollbar Blanca */
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+            text-shadow: 0 0 5px #e0e0e0; /* Sombra de texto Blanca */
+            cursor: pointer;
+            text-align: center; /* Asegurar que el texto esté centrado */
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #000000;
+            background-color: #e0e0e0; /* Fondo Blanco en hover/active */
+            text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0;
+            box-shadow: 0 0 10px #e0e0e0, 0 0 20px #e0e0e0;
+        }
+        
+        .form-input, .form-textarea, .form-select {
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid #e0e0e0; /* Borde Blanco */
+            color: #e0e0e0; /* Texto Blanco */
+            padding: 8px 12px;
+            width: 100%;
+            border-radius: 4px;
+            font-family: 'VT323', monospace;
+            font-size: 1.125rem;
+            transition: all 0.2s ease;
+        }
+        /* Estilo para el selector de fecha */
+        .form-input[type="date"] { color-scheme: dark; }
+        .form-input[type="date"]::-webkit-calendar-picker-indicator {
+            background-color: #e0e0e0; /* Indicador Blanco */
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        /* Corregir el color de texto del select en Safari/iOS */
+        .form-select option {
+            background-color: #111;
+            color: #e0e0e0;
+        }
 
-		.nav-link {
-			transition: all 0.2s ease-in-out;
-			text-shadow: 0 0 5px #e0e0e0; /* Sombra de texto Blanca */
-			cursor: pointer;
-			text-align: center; /* Asegurar que el texto esté centrado */
-		}
-		.nav-link:hover, .nav-link.active {
-			color: #000000;
-			background-color: #e0e0e0; /* Fondo Blanco en hover/active */
-			text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0;
-			box-shadow: 0 0 10px #e0e0e0, 0 0 20px #e0e0e0;
-		}
-		
-		.form-input, .form-textarea, .form-select {
-			background-color: rgba(0, 0, 0, 0.5);
-			border: 1px solid #e0e0e0; /* Borde Blanco */
-			color: #e0e0e0; /* Texto Blanco */
-			padding: 8px 12px;
-			width: 100%;
-			border-radius: 4px;
-			font-family: 'VT323', monospace;
-			font-size: 1.125rem;
-			transition: all 0.2s ease;
-		}
-		/* Estilo para el selector de fecha */
-		.form-input[type="date"] { color-scheme: dark; }
-		.form-input[type="date"]::-webkit-calendar-picker-indicator {
-			background-color: #e0e0e0; /* Indicador Blanco */
-			border-radius: 2px;
-			cursor: pointer;
-		}
-		/* Corregir el color de texto del select en Safari/iOS */
-		.form-select option {
-			background-color: #111;
-			color: #e0e0e0;
-		}
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 10px #e0e0e0; /* Foco Blanco */
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        /* Estilo para campos inválidos */
+        .form-input.invalid, .form-textarea.invalid, .form-select.invalid {
+            border-color: #ff0000; /* Borde Rojo */
+            box-shadow: 0 0 10px #ff0000; /* Sombra Roja */
+        }
+        .form-input:read-only {
+            background-color: rgba(0, 0, 0, 0.2);
+            color: #e0e0e0;
+            border-style: dashed;
+        }
+        .form-label { display: block; margin-bottom: 0.5rem; text-shadow: 0 0 3px #e0e0e0; }
+        
+        .form-checkbox { 
+            margin-right: 0.5rem;
+            accent-color: #facc15; /* Yellow-400 */
+            transform: scale(1.5);
+        }
+        
+        .submit-btn {
+            background-color: transparent;
+            border: 1px solid #e0e0e0; /* Botón Blanco */
+            color: #e0e0e0;
+        }
+        .submit-btn:hover { background-color: #e0e0e0; color: #000000; box-shadow: 0 0 15px #e0e0e0; }
+        .submit-btn:disabled {
+            border-color: #555555; /* Deshabilitado Gris */
+            color: #555555;
+            cursor: not-allowed;
+            background-color: rgba(0, 0, 0, 0.2);
+            box-shadow: none;
+        }
 
-		.form-input:focus, .form-textarea:focus, .form-select:focus {
-			outline: none;
-			box-shadow: 0 0 10px #e0e0e0; /* Foco Blanco */
-			background-color: rgba(0, 0, 0, 0.8);
-		}
-		/* Estilo para campos inválidos */
-		.form-input.invalid, .form-textarea.invalid, .form-select.invalid {
-			border-color: #ff0000; /* Borde Rojo */
-			box-shadow: 0 0 10px #ff0000; /* Sombra Roja */
-		}
-		.form-input:read-only {
-			background-color: rgba(0, 0, 0, 0.2);
-			color: #e0e0e0;
-			border-style: dashed;
-		}
-		.form-label { display: block; margin-bottom: 0.5rem; text-shadow: 0 0 3px #e0e0e0; }
-		
-		.form-checkbox { 
-			margin-right: 0.5rem;
-			accent-color: #facc15; /* Yellow-400 */
-			transform: scale(1.5);
-		}
-		
-		.submit-btn {
-			background-color: transparent;
-			border: 1px solid #e0e0e0; /* Botón Blanco */
-			color: #e0e0e0;
-		}
-		.submit-btn:hover { background-color: #e0e0e0; color: #000000; box-shadow: 0 0 15px #e0e0e0; }
-		.submit-btn:disabled {
-			border-color: #555555; /* Deshabilitado Gris */
-			color: #555555;
-			cursor: not-allowed;
-			background-color: rgba(0, 0, 0, 0.2);
-			box-shadow: none;
-		}
+        /* Estilos de Impresión */
+        @media print {
+            body {
+                background: #ffffff !important; /* Fondo blanco para impresión */
+            }
+            
+            /* Ocultar TODO menos el contenedor del modal */
+            #three-canvas, #main-app-container, footer {
+                display: none !important;
+            }
+            
+            #quote-modal {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
 
-		/* Estilos de Impresión CORREGIDOS */
-		@media print {
-			body {
-				background: #ffffff !important; /* Fondo blanco para impresión */
-			}
-			
-			/* Ocultar TODO menos el contenedor del modal */
-			#three-canvas, #main-app-container, footer {
-				display: none !important;
-			}
-			
-			#quote-modal {
-				display: block !important;
-				position: static !important;
-				width: 100% !important;
-				max-width: 100% !important;
-				height: auto !important;
-				max-height: none !important;
-				overflow: visible !important;
-				background: #ffffff !important;
-				backdrop-filter: none !important;
-				-webkit-backdrop-filter: none !important;
-			}
+            #quote-modal-content {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                border: none !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
 
-			#quote-modal-content {
-				display: block !important;
-				position: static !important;
-				width: 100% !important;
-				max-width: 100% !important;
-				height: auto !important;
-				max-height: none !important;
-				overflow: visible !important;
-				background: #ffffff !important;
-				color: #000000 !important;
-				border: none !important;
-				box-shadow: none !important;
-				backdrop-filter: none !important;
-				-webkit-backdrop-filter: none !important;
-			}
-
-			/* Muestra el contenedor de impresión y oculta el en vivo */
-			#quote-summary-print-container { display: block !important; }
-			#quote-summary { display: none !important; }
-			
-			#quote-summary-print {
-				display: block !important;
-				color: #000 !important;
-				font-size: 12pt !important;
-				font-family: Arial, sans-serif !important; /* Fuente segura para impresión */
-			}
-			
-			#quote-summary-print h1 { font-size: 24pt; color: #000; font-weight: bold; }
-			#quote-summary-print h2 { font-size: 18pt; color: #000; font-weight: bold; }
-			#quote-summary-print p { font-size: 12pt; color: #000; margin-bottom: 8px; }
-			#quote-summary-print strong { color: #333 !important; }
-			#quote-summary-print .text-yellow-300 { color: #000 !important; font-weight: bold; }
-			#quote-summary-print .text-red-500 { color: #cc0000 !important; font-weight: bold; }
-			#quote-summary-print hr { border-color: #999 !important; }
-			
-			/* Ocultar botones e UI del modal */
-			#modal-controls, #modal-overlay, #quote-modal-header h2 {
-				display: none !important;
-			}
-			/* Ocultar el título de confirmar */
-			#quote-modal-header h2 {
-				display: none !important;
-			}
-		}
-	</style>
+            /* Muestra el contenedor de impresión y oculta el en vivo */
+            #quote-summary-print-container { display: block !important; }
+            #quote-summary { display: none !important; }
+            
+            #quote-summary-print {
+                display: block !important;
+                color: #000 !important;
+                font-size: 12pt !important;
+                font-family: Arial, sans-serif !important; /* Fuente segura para impresión */
+            }
+            
+            #quote-summary-print h1 { font-size: 24pt; color: #000; font-weight: bold; }
+            #quote-summary-print h2 { font-size: 18pt; color: #000; font-weight: bold; }
+            #quote-summary-print p { font-size: 12pt; color: #000; margin-bottom: 8px; }
+            #quote-summary-print strong { color: #333 !important; }
+            #quote-summary-print .text-yellow-300 { color: #000 !important; font-weight: bold; }
+            #quote-summary-print .text-red-500 { color: #cc0000 !important; font-weight: bold; }
+            #quote-summary-print hr { border-color: #999 !important; }
+            
+            /* Ocultar botones e UI del modal */
+            #modal-controls, #modal-overlay, #quote-modal-header h2 {
+                display: none !important;
+            }
+            /* Ocultar el título de confirmar */
+            #quote-modal-header h2 {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body class="w-full h-screen overflow-hidden text-base sm:text-lg md:text-xl">
 
-	<!-- Canvas de Fondo 3D -->
-	<canvas id="three-canvas"></canvas>
+    <!-- Canvas de Fondo 3D -->
+    <canvas id="three-canvas"></canvas>
 
-	<!-- UI Principal -->
-	<!-- ID AÑADIDO AQUÍ para ocultar en impresión -->
-	<div id="main-app-container" class="relative w-full h-full p-2 sm:p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center">
-		
-		<main class="content-box rounded-lg w-full max-w-4xl h-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-3 sm:p-4 md:p-6 lg:p-8">
-			
-			<!-- Header: Logo -->
-			<header class="text-center mb-4 md:mb-6">
-				<h1 class="text-5xl sm:text-7xl md:text-8xl font-bold glitch-text" style="color: #ffffff; text-shadow: 3px 3px #00ff00, -3px -3px #ff00ff;">
-					FUKURO
-				</h1>
-				<p class="text-2xl sm:text-3xl md:text-4xl katakana neon-shadow">フクロウ</p>
-				<p class="text-lg sm:text-xl md:text-3xl tracking-widest text-yellow-300" style="text-shadow: 0 0 5px #facc15, 0 0 10px #facc15;">
-					A/V SYNTHESIS
-				</p>
-			</header>
+    <!-- UI Principal -->
+    <div id="main-app-container" class="relative w-full h-full p-2 sm:p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center">
+        
+        <main class="content-box rounded-lg w-full max-w-4xl h-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-3 sm:p-4 md:p-6 lg:p-8">
+            
+            <!-- Header: Logo -->
+            <header class="text-center mb-4 md:mb-6">
+                <h1 class="text-5xl sm:text-7xl md:text-8xl font-bold glitch-text" style="color: #ffffff; text-shadow: 3px 3px #00ff00, -3px -3px #ff00ff;">
+                    FUKURO
+                </h1>
+                <p class="text-2xl sm:text-3xl md:text-4xl katakana neon-shadow">フクロウ</p>
+                <p class="text-lg sm:text-xl md:text-3xl tracking-widest text-yellow-300" style="text-shadow: 0 0 5px #facc15, 0 0 10px #facc15;">
+                    A/V SYNTHESIS
+                </p>
+            </header>
 
-			<!-- Área de Contenido (Directo al Formulario) -->
-			<div id="content-area" class="content-box-inner flex-grow overflow-y-auto p-4 border border-dashed border-gray-500/50 rounded-lg">
-				
-			<!-- TÍTULO CAMBIADO AQUÍ -->
+            <!-- Área de Contenido (Directo al Formulario) -->
+            <div id="content-area" class="content-box-inner flex-grow overflow-y-auto p-4 border border-dashed border-gray-500/50 rounded-lg">
+                
+                <!-- TÍTULO CAMBIADO AQUÍ -->
                 <h2 class="text-2xl md:text-3xl neon-shadow mb-4">++ LET'S SYNTHESIZE ++</h2>
                 
                 <!-- ID de FORMSPREE Y AJUSTES DE SPAM -->
@@ -431,629 +431,75 @@
                     </div>
                 </form>
                 <div id="form-status" class="mt-4 text-center"></div>
-			</div> <!-- Fin de content-area -->
 
-		</main>
+            </div> <!-- Fin de content-area -->
 
-		<!-- Footer: Redes -->
-		<footer class="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 flex gap-2 sm:gap-4 text-xl sm:text-2xl md:text-3xl">
-			<a href="#" class="nav-link p-2 rounded-lg" title="SoundCloud">SC</a>
-			<a href="#" class="nav-link p-2 rounded-lg" title="Vimeo">VM</a>
-			<a href="#" class="nav-link p-2 rounded-lg" title="Instagram">IG</a>
-		</footer>
+        </main>
 
-	</div>
+        <!-- Footer: Redes -->
+        <footer class="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 flex gap-2 sm:gap-4 text-xl sm:text-2xl md:text-3xl">
+            <a href="#" class="nav-link p-2 rounded-lg" title="SoundCloud">SC</a>
+            <a href="#" class="nav-link p-2 rounded-lg" title="Vimeo">VM</a>
+            <a href="#" class="nav-link p-2 rounded-lg" title="Instagram">IG</a>
+        </footer>
 
-	<!-- Modal de Confirmación de Cotización -->
-	<div id="quote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-		<!-- Overlay -->
-		<div class="absolute inset-0 bg-black/80 backdrop-blur-sm" id="modal-overlay"></div>
-		
-		<div id="quote-modal-content" class="content-box w-full max-w-2xl z-10 p-6 flex flex-col max-h-[90vh]">
-			
-			<div id="quote-modal-header" class="text-center mb-4">
-				<h1 class="text-5xl font-bold glitch-text" style="color: #ffffff; text-shadow: 3px 3px #00ff00, -3px -3px #ff00ff;">
-					FUKURO
-				</h1>
-				<p class="text-2xl katakana neon-shadow">フクロウ</p>
-				<p class="text-lg tracking-widest text-yellow-300" style="text-shadow: 0 0 5px #facc15;">
-					A/V SYNTHESIS
-				</p>
-				<h2 class="text-3xl neon-shadow mt-4">++ CONFIRMAR COTIZACIÓN ++</h2>
-			</div>
-			
-			<div id="quote-summary" class="flex-grow overflow-y-auto space-y-3 mb-6 pr-2 text-lg">
-				<!-- El resumen de la cotización se inyectará aquí -->
-			</div>
-			
-			<!-- Contenido solo para impresión -->
-			<div id="quote-summary-print-container" class="hidden">
-				<div class="text-center mb-6">
-					<h1 class="text-5xl font-bold">FUKURO</h1>
-					<p class="text-2xl katakana">フクロウ</p>
-					<p class="text-xl tracking-widest">A/V SYNTHESIS</p>
-					<h2 class="text-3xl mt-4">++ RESUMEN DE COTIZACIÓN ++</h2>
-				</div>
-				<div id="quote-summary-print" class="text-base">
-					<!-- El resumen se copiará aquí -->
-				</div>
-			</div>
+    </div>
 
-			
-			<div id="modal-status" class="mt-4 text-center text-lg"></div>
-
-			<div id="modal-controls" class="flex flex-col sm:flex-row justify-between gap-4 mt-6">
-				<button id="modify-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
-					[ MODIFICAR ]
-				</button>
-				<button id="print-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
-					[ IMPRIMIR / GUARDAR ]
-				</button>
-				<button id="accept-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">
-					[ ACEPTAR Y ENVIAR ]
-				</button>
-			</div>
-		</div>
-	</div>
-
-
-	<!-- Lógica Principal de JavaScript -->
-	<script type="module">
-		import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-        // --- Lógica de UI ---
-        let currentForm = null;
-        let currentFormData = null;
-
-        // --- Lógica del Modal ---
-        const modal = document.getElementById('quote-modal');
-        const modifyBtn = document.getElementById('modify-quote-btn');
-        const acceptBtn = document.getElementById('accept-quote-btn');
-        const printBtn = document.getElementById('print-quote-btn'); 
-        const modalOverlay = document.getElementById('modal-overlay');
-
-        // Función de Descarga de PNG
-        async function downloadQuotePNG() {
-            const modalContent = document.getElementById('quote-modal-content');
-            const projectName = document.getElementById('project-name')?.value || 'Cotizacion';
-            const filename = `Cotizacion_${projectName.replace(/ /g, '_')}.png`;
-
-            // Ocultar botones para la captura
-            const controls = document.getElementById('modal-controls');
-            controls.style.display = 'none';
-            
-            try {
-                const canvas = await html2canvas(modalContent, {
-                    backgroundColor: null, // Captura transparencia
-                    logging: false
-                });
-                
-                // Crear link de descarga
-                const image = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = image;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-            } catch (err) {
-                console.error("Error al generar PNG:", err);
-                alert("Error al generar imagen. Intenta imprimir (Ctrl+P) en su lugar.");
-            }
-
-            // Volver a mostrar botones
-            controls.style.display = ''; // Restablecer
-        }
-
-        function showModal() {
-            modal.classList.remove('hidden');
-            
-            // Conectar el botón de imprimir
-            printBtn.onclick = downloadQuotePNG;
-        }
+    <!-- Modal de Confirmación de Cotización -->
+    <div id="quote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" id="modal-overlay"></div>
         
-        function hideModal() { 
-            modal.classList.add('hidden'); 
-            const statusDiv = document.getElementById('modal-status');
-            statusDiv.innerHTML = "";
-            acceptBtn.disabled = false;
-            acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
+        <div id="quote-modal-content" class="content-box w-full max-w-2xl z-10 p-6 flex flex-col max-h-[90vh]">
             
-            if (printBtn) {
-                printBtn.onclick = null; 
-            }
-        }
-
-        modifyBtn.addEventListener('click', hideModal);
-        modalOverlay.addEventListener('click', hideModal);
-        acceptBtn.addEventListener('click', () => {
-            if (currentFormData) {
-                sendFormToSpree(currentFormData);
-            }
-        });
-
-        // --- Lógica de Validación de Formulario Personalizada ---
-        function validateForm() {
-            if (!currentForm) return false;
-
-            let isValid = true;
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            currentForm.querySelectorAll('.form-error').forEach(el => el.classList.add('hidden'));
-            currentForm.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
-
-            // 1. Validar Campos Básicos (Nombre, Email, Proyecto)
-            const fieldsToValidate = ['name', 'email', 'project-name', 'timeline'];
-            fieldsToValidate.forEach(id => {
-                const input = document.getElementById(id);
-                if (input.value.trim() === '') {
-                    isValid = false;
-                    document.getElementById(`${id}-error`).textContent = "Campo requerido.";
-                    document.getElementById(`${id}-error`).classList.remove('hidden');
-                    input.classList.add('invalid');
-                } else if (id === 'email' && !emailRegex.test(input.value)) {
-                    isValid = false;
-                    document.getElementById(`${id}-error`).textContent = "Formato de email inválido.";
-                    document.getElementById(`${id}-error`).classList.remove('hidden');
-                    input.classList.add('invalid');
-                }
-            });
-
-            // 4. Validar Tipo de Servicio
-            const serviceAudio = document.getElementById('service-audio').checked;
-            const serviceVideo = document.getElementById('service-video').checked;
-            if (!serviceAudio && !serviceVideo) {
-                isValid = false;
-                document.getElementById('service-type-error').textContent = "Debes seleccionar al menos un servicio.";
-                document.getElementById('service-type-error').classList.remove('hidden');
-            }
+            <div id="quote-modal-header" class="text-center mb-4">
+                <h1 class="text-5xl font-bold glitch-text" style="color: #ffffff; text-shadow: 3px 3px #00ff00, -3px -3px #ff00ff;">
+                    FUKURO
+                </h1>
+                <p class="text-2xl katakana neon-shadow">フクロウ</p>
+                <p class="text-lg tracking-widest text-yellow-300" style="text-shadow: 0 0 5px #facc15;">
+                    A/V SYNTHESIS
+                </p>
+                <h2 class="text-3xl neon-shadow mt-4">++ CONFIRMAR COTIZACIÓN ++</h2>
+            </div>
             
-            // 6. Validar Términos
-            const terms = document.getElementById('terms-checkbox');
-            if (!terms.checked) {
-                isValid = false;
-                document.getElementById('terms-checkbox-error').textContent = "Debes aceptar los términos.";
-                document.getElementById('terms-checkbox-error').classList.remove('hidden');
-                terms.classList.add('invalid');
-            }
-
-            return isValid;
-        }
-
-        // --- Lógica del Calculador de Cotización ---
-        function setupQuoteCalculator() {
-            const calculator = document.getElementById('quote-form-calculator');
-            if (!calculator) return;
-
-            // --- SELECCIÓN DE SERVICIO (NUEVA) ---
-            const audioCheckbox = document.getElementById('service-audio');
-            const videoCheckbox = document.getElementById('service-video');
-            const audioControls = document.getElementById('audio-controls-container');
-            const videoControls = document.getElementById('video-controls-container');
-
-            // --- CONTROLES DE AUDIO ---
-            const audioQuantityInput = document.getElementById('audio_quantity');
-            const audioMinInput = document.getElementById('audio_min'); 
-            const audioSecInput = document.getElementById('audio_sec'); 
-
-            // --- CONTROLES DE VIDEO ---
-            const videoQuantityInput = document.getElementById('video_quantity');
-            const videoMinInput = document.getElementById('video_min'); 
-            const videoSecInput = document.getElementById('video_sec'); 
-
-            // --- INPUTS OCULTOS ---
-            const calculatedBaseFeeInput = document.getElementById('calculated_base_fee');
-            const calculatedAudioFeeInput = document.getElementById('calculated_audio_fee');
-            const calculatedVideoFeeInput = document.getElementById('calculated_video_fee');
-
-            // --- OTROS CONTROLES ---
-            const existingProjectCheckbox = document.getElementById('existing-project');
-            const quoteDisplay = document.getElementById('estimated-quote');
-            const hiddenQuote = document.getElementById('hidden-quote');
-            const timelineInput = document.getElementById('timeline');
-            const urgencyFeeNote = document.getElementById('urgency-fee-note');
-            const termsCheckbox = document.getElementById('terms-checkbox');
-            const generateQuoteBtn = document.getElementById('generate-quote-btn');
-
-            timelineInput.min = new Date().toISOString().split('T')[0];
-
-            const RATES = {
-                BASE_FEE: 1200, 
-                AUDIO_TIER1: 2400, AUDIO_TIER2: 1200, 
-                VIDEO_TIER1: 5000, VIDEO_TIER2: 2500, 
-                URGENCY_PERCENT: 0.40
-            };
+            <div id="quote-summary" class="flex-grow overflow-y-auto space-y-3 mb-6 pr-2 text-lg">
+                <!-- El resumen de la cotización se inyectará aquí -->
+            </div>
             
-            // Función genérica para calcular tarifa gradual
-            function calculateGradualFee(totalDuration, rateTier1, rateTier2) {
-                if (totalDuration <= 0) return 0;
-                if (totalDuration <= 1.0) {
-                    return totalDuration * rateTier1;
-                } else {
-                    const tier1Fee = 1.0 * rateTier1;
-                    const remainingDuration = totalDuration - 1.0;
-                    const tier2Fee = remainingDuration * rateTier2;
-                    return tier1Fee + tier2Fee;
-                }
-            }
+            <!-- Contenido solo para impresión -->
+            <div id="quote-summary-print-container" class="hidden">
+                <div class="text-center mb-6">
+                    <h1 class="text-5xl font-bold">FUKURO</h1>
+                    <p class="text-2xl katakana">フクロウ</p>
+                    <p class="text-xl tracking-widest">A/V SYNTHESIS</p>
+                    <h2 class="text-3xl mt-4">++ RESUMEN DE COTIZACIÓN ++</h2>
+                </div>
+                <div id="quote-summary-print" class="text-base">
+                    <!-- El resumen se copiará aquí -->
+                </div>
+            </div>
 
-            function calculateQuote() {
-                const isAudio = audioCheckbox.checked;
-                const isVideo = videoCheckbox.checked;
-                const isExistingProject = existingProjectCheckbox.checked;
-
-                // Mostrar/ocultar bloques de controles
-                audioControls.classList.toggle('hidden', !isAudio);
-                videoControls.classList.toggle('hidden', !isVideo);
-
-                let totalAudioFee = 0;
-                let totalVideoFee = 0;
-
-                // 1. Calcular Costo de Audio (si está seleccionado)
-                if (isAudio) {
-                    const quantity = parseFloat(audioQuantityInput.value) || 1;
-                    const minutes = parseFloat(audioMinInput.value) || 0;
-                    const seconds = parseFloat(audioSecInput.value) || 0;
-                    const durationPerItem = minutes + (seconds / 60);
-                    const totalDuration = durationPerItem * quantity;
-                    
-                    totalAudioFee = calculateGradualFee(totalDuration, RATES.AUDIO_TIER1, RATES.AUDIO_TIER2);
-                }
-
-                // 2. Calcular Costo de Video (si está seleccionado)
-                if (isVideo) {
-                    const quantity = parseFloat(videoQuantityInput.value) || 1;
-                    const minutes = parseFloat(videoMinInput.value) || 0;
-                    const seconds = parseFloat(videoSecInput.value) || 0;
-                    const durationPerItem = minutes + (seconds / 60);
-                    const totalDuration = durationPerItem * quantity;
-                    
-                    totalVideoFee = calculateGradualFee(totalDuration, RATES.VIDEO_TIER1, RATES.VIDEO_TIER2);
-                }
-
-                // 3. Calcular Tarifa Base
-                // Se aplica una vez si CUALQUIER servicio está seleccionado Y NO es un proyecto existente
-                const totalBaseFee = (isAudio || isVideo) && !isExistingProject ? RATES.BASE_FEE : 0;
-                
-                // 4. Calcular Cotización Base (Suma de todo)
-                const baseQuote = totalBaseFee + totalAudioFee + totalVideoFee;
-
-                // Guardar valores calculados para el modal
-                calculatedBaseFeeInput.value = totalBaseFee.toFixed(2);
-                calculatedAudioFeeInput.value = totalAudioFee.toFixed(2);
-                calculatedVideoFeeInput.value = totalVideoFee.toFixed(2);
-
-                // 5. Calcular Tarifa de Urgencia
-                let urgencyFee = 0;
-                const selectedDateStr = timelineInput.value;
-                if (selectedDateStr) {
-                    const selectedDate = new Date(selectedDateStr + "T00:00:00-06:00"); 
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0); 
-                    const threeDaysFromNow = new Date(today);
-                    threeDaysFromNow.setDate(today.getDate() + 3); 
-
-                    if (selectedDate < threeDaysFromNow && baseQuote > 0) {
-                        urgencyFee = baseQuote * RATES.URGENCY_PERCENT; 
-                        urgencyFeeNote.classList.remove('hidden');
-                        urgencyFeeNote.textContent = `> Tarifa de Urgencia Aplicada: +$${urgencyFee.toFixed(2)} MXN (40%)`;
-                    } else {
-                        urgencyFeeNote.classList.add('hidden');
-                    }
-                } else {
-                    urgencyFeeNote.classList.add('hidden');
-                }
-                
-                // 6. Total Final
-                const totalQuote = baseQuote + urgencyFee;
-                
-                if (totalQuote > 0) {
-                    quoteDisplay.value = `$${totalQuote.toFixed(2)} MXN (Total)`;
-                } else {
-                    quoteDisplay.value = "// SELECCIONA UN SERVICIO";
-                }
-                
-                hiddenQuote.value = quoteDisplay.value;
-            }
             
-            // --- LISTENERS (Escuchar cualquier cambio en el formulario) ---
-            calculator.addEventListener('change', calculateQuote); 
-            calculator.addEventListener('input', calculateQuote);
-            
-            termsCheckbox.addEventListener('change', () => {
-                generateQuoteBtn.disabled = !termsCheckbox.checked;
-            });
+            <div id="modal-status" class="mt-4 text-center text-lg"></div>
 
-            calculateQuote(); // Calcular al cargar
-        }
+            <div id="modal-controls" class="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+                <button id="modify-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
+                    [ MODIFICAR ]
+                </button>
+                <button id="print-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
+                    [ IMPRIMIR / GUARDAR ]
+                </button>
+                <button id="accept-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">
+                    [ ACEPTAR Y ENVIAR ]
+                </button>
+            </div>
+        </div>
+    </div>
 
-        // --- Lógica de Envío de Formulario ---
-        function handleGenerateQuote(event) {
-            event.preventDefault();
-            
-            if (!validateForm()) {
-                const firstError = currentForm.querySelector('.invalid');
-                if(firstError) firstError.focus();
-                return;
-            }
 
-            document.getElementById('form-replyto').value = document.getElementById('email').value;
-            document.getElementById('form-subject').value = document.getElementById('project-name').value || 'Nueva Cotización FUKURO';
-
-            currentFormData = new FormData(currentForm);
-            
-            const summaryDiv = document.getElementById('quote-summary');
-            const isAudio = document.getElementById('service-audio').checked;
-            const isVideo = document.getElementById('service-video').checked;
-            const baseFee = parseFloat(currentFormData.get('calculated_base_fee')) || 0;
-            const audioFee = parseFloat(currentFormData.get('calculated_audio_fee')) || 0;
-            const videoFee = parseFloat(currentFormData.get('calculated_video_fee')) || 0;
-            const isExistingProject = currentFormData.get('existing-project');
-            
-            let servicesSelected = [];
-            if (isAudio) servicesSelected.push("Audio");
-            if (isVideo) servicesSelected.push("Video");
-
-            let summaryHTML = `
-                <p><strong class="text-gray-300">CLIENTE:</strong> ${currentFormData.get('name') || 'N/A'}</p>
-                <p><strong class="text-gray-300">EMAIL:</strong> ${currentFormData.get('email') || 'N/A'}</p>
-                <p><strong class="text-gray-300">PROYECTO:</strong> ${currentFormData.get('project-name') || 'N/A'}</p>
-                <hr class="border-gray-500/50 my-2">
-                <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
-            `;
-
-            if (isAudio) {
-                summaryHTML += `
-                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                        <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
-                        <p><strong class="text-gray-300">Cantidad:</strong> ${currentFormData.get('audio_quantity')}</p>
-                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${currentFormData.get('audio_min')}m ${currentFormData.get('audio_sec')}s</p>
-                        <p><strong class="text-gray-300">Specs:</strong> ${currentFormData.get('format_av_audio') || 'N/A'} | ${currentFormData.get('resolution_av_audio') || 'N/A'}</p>
-                        <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
-                    </div>
-                `;
-            }
-
-            if (isVideo) {
-                summaryHTML += `
-                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                        <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
-                        <p><strong class="text-gray-300">Cantidad:</strong> ${currentFormData.get('video_quantity')}</p>
-                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${currentFormData.get('video_min')}m ${currentFormData.get('video_sec')}s</p>
-                        <p><strong class="text-gray-300">Specs:</strong> ${currentFormData.get('format_av_video') || 'N/A'} | ${currentFormData.get('resolution_av_video') || 'N/A'}</p>
-                        <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
-                    </div>
-                `;
-            }
-
-            summaryHTML += `<hr class="border-gray-500/50 my-2">`;
-            
-            if (isExistingProject) {
-                 summaryHTML += `<p><strong class="text-yellow-300">TARIFA BASE (Proyecto):</strong> $0.00 MXN (Proyecto existente)</p>`;
-            } else if (isAudio || isVideo) {
-                 summaryHTML += `<p><strong class="text-gray-300">TARIFA BASE (Proyecto):</strong> $${baseFee.toFixed(2)} MXN</p>`;
-                 summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
-            }
-
-            summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${currentFormData.get('timeline') || 'N/A'}</p>`;
-            
-            const urgencyFeeNote = document.getElementById('urgency-fee-note');
-            if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
-                summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
-            }
-
-            summaryHTML += `
-                <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${currentFormData.get('cotizacion_estimada')}</p>
-                <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
-                
-                <hr class="border-gray-500/50 my-2">
-                <p><strong class="text-gray-300">BRIEF:</strong></p>
-                <p class="whitespace-pre-wrap">${currentFormData.get('brief') || 'N/A'}</p>
-                <hr class="border-gray-500/50 my-2">
-                <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
-                <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
-            `;
-            
-            summaryDiv.innerHTML = summaryHTML;
-            showModal();
-        }
-
-        async function sendFormToSpree(formData) {
-            const statusDiv = document.getElementById('modal-status');
-            
-            statusDiv.innerHTML = '<p class="text-yellow-300">// TRANSMITIENDO_DATOS...</p>';
-            acceptBtn.disabled = true;
-            acceptBtn.textContent = "[ ... ]";
-            printBtn.disabled = true;
-            modifyBtn.disabled = true;
-
-            try {
-                const response = await fetch(currentForm.action, {
-                    method: currentForm.method,
-                    body: formData,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (response.ok) {
-                    statusDiv.innerHTML = `
-                        <p class="text-gray-200 neon-shadow">++ TRANSMISIÓN_EXITOSA ++</p>
-                        <p class="mt-1">// Hemos recibido tu solicitud.</p>
-                    `;
-                    
-                    // -- ¡NUEVO! Descargar PNG al enviar --
-                    await downloadQuotePNG(); 
-                    // ------------------------------------
-
-                    currentForm.reset();
-                    setupQuoteCalculator();
-                    printBtn.disabled = true;
-                    modifyBtn.disabled = true;
-                    acceptBtn.disabled = true;
-                    setTimeout(hideModal, 4000); 
-                } else {
-                    const responseData = await response.json();
-                    if (Object.hasOwn(responseData, 'errors')) {
-                        const errorMsg = responseData["errors"].map(error => error["message"]).join(", ");
-                        throw new Error(errorMsg);
-                    } else {
-                        throw new Error('Respuesta no-OK del servidor.');
-                    }
-                }
-            } catch (error) {
-                console.error("Error al enviar formulario:", error);
-                statusDiv.innerHTML = `<p class="text-red-500">-- ERROR: FALLA_TRANSMISIÓN --</p><p>// ${error.message || 'Intenta de nuevo o contacta directamente.'}</p>`;
-                acceptBtn.disabled = false;
-                acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
-                printBtn.disabled = false;
-                modifyBtn.disabled = false;
-            }
-        }
-
-        // --- Lógica de Three.js ---
-        let scene, camera, renderer, mesh, clock;
-        const lights = [];
-
-        function createOwl() {
-            const owlGroup = new THREE.Group();
-            const material = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                metalness: 1.0,
-                roughness: 0.1,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.1,
-                reflectivity: 1.0,
-                sheen: 1.0,
-                sheenColor: new THREE.Color(0x00ffff)
-            });
-
-            const bodyGeo = new THREE.SphereGeometry(1, 32, 16);
-            const body = new THREE.Mesh(bodyGeo, material);
-            body.scale.set(1, 1.2, 1);
-            owlGroup.add(body);
-
-            const eyeGeo = new THREE.SphereGeometry(0.3, 12, 8);
-            const eyeL = new THREE.Mesh(eyeGeo, material);
-            const eyeR = new THREE.Mesh(eyeGeo, material);
-            eyeL.position.set(-0.4, 0.3, 0.8);
-            eyeR.position.set(0.4, 0.3, 0.8);
-            owlGroup.add(eyeL);
-            owlGroup.add(eyeR);
-            
-            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const pupilGeo = new THREE.SphereGeometry(0.1, 8, 8);
-            const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
-            const pupilR = new THREE.Mesh(pupilGeo, pupilMat);
-            pupilL.position.set(-0.4, 0.3, 1.05);
-            pupilR.position.set(0.4, 0.3, 1.05);
-            owlGroup.add(pupilL);
-            owlGroup.add(pupilR);
-
-            const beakGeo = new THREE.ConeGeometry(0.2, 0.4, 8);
-            const beak = new THREE.Mesh(beakGeo, material);
-            beak.position.set(0, 0.0, 1.0);
-            beak.rotation.x = 0.5; 
-            owlGroup.add(beak);
-
-            const wingGeo = new THREE.SphereGeometry(0.7, 16, 8);
-            const wingL = new THREE.Mesh(wingGeo, material);
-            wingL.position.set(-0.8, -0.2, 0);
-            wingL.scale.set(0.4, 1, 0.8);
-            wingL.rotation.z = 0.3;
-            owlGroup.add(wingL);
-
-            const wingR = new THREE.Mesh(wingGeo, material);
-            wingR.position.set(0.8, -0.2, 0);
-            wingR.scale.set(0.4, 1, 0.8);
-            wingR.rotation.z = -0.3;
-            owlGroup.add(wingR);
-
-            const tuftGeo = new THREE.ConeGeometry(0.15, 0.5, 8);
-            const tuftL = new THREE.Mesh(tuftGeo, material);
-            const tuftR = new THREE.Mesh(tuftGeo, material);
-            tuftL.position.set(-0.5, 1.0, 0.2);
-            tuftR.position.set(0.5, 1.0, 0.2);
-            tuftL.rotation.z = -0.2;
-            tuftR.rotation.z = 0.2;
-            owlGroup.add(tuftL);
-            owlGroup.add(tuftR);
-            
-            owlGroup.scale.set(0.8, 0.8, 0.8);
-            return owlGroup;
-        }
-
-        function initThree() {
-            try {
-                scene = new THREE.Scene();
-                clock = new THREE.Clock();
-                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                camera.position.z = 2.5;
-
-                const canvas = document.getElementById('three-canvas');
-                renderer = new THREE.WebGLRenderer({ canvas, antias: true, alpha: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                
-                mesh = createOwl();
-                scene.add(mesh);
-                scene.add(new THREE.AmbientLight(0x404040, 0.5));
-
-                const lightColors = [0x00ff00, 0xff00ff, 0x00ffff, 0xff0000];
-                lightColors.forEach((color, index) => {
-                    const light = new THREE.PointLight(color, 10, 5);
-                    light.data = {
-                        offset: index * (Math.PI * 2) / lightColors.length,
-                        speed: 1 + Math.random()
-                    };
-                    lights.push(light);
-                    scene.add(light);
-                });
-
-                window.addEventListener('resize', onWindowResize);
-                animate();
-            } catch (error) {
-                console.error("Fallo al iniciar Three.js:", error);
-                document.getElementById('three-canvas').style.display = 'none';
-            }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const elapsedTime = clock.getElapsedTime();
-
-            if (mesh) {
-                mesh.rotation.x = elapsedTime * 0.1;
-                mesh.rotation.y = elapsedTime * 0.2;
-                mesh.position.y = Math.sin(elapsedTime * 0.5) * 0.1; 
-            }
-            lights.forEach((light) => {
-                const t = elapsedTime * light.data.speed + light.data.offset;
-                light.position.x = Math.sin(t) * 2;
-                light.position.y = Math.cos(t * 0.8) * 2;
-                light.position.z = Math.cos(t) * 2;
-            });
-            renderer.render(scene, camera);
-        }
-
-        // --- Iniciar todo ---
-        currentForm = document.getElementById('quote-form');
-        if (currentForm) {
-            currentForm.addEventListener('submit', handleGenerateQuote);
-        }
-        setupQuoteCalculator(); 
-        initThree();
-
-	</script>
+    <!-- Cargar el archivo JavaScript externo -->
+    <script type="module" src="main.js"></script>
+    
 </body>
 </html>
