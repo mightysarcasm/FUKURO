@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUKURO - Cotización de Proyecto</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js Library -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts (VT323 & DotGothic16 for Japanese) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        /* Estilos idénticos a index.html */
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #000000;
+            color: #e0e0e0;
+            /* overflow: hidden; */ /* Permitir scroll */
+        }
+        .katakana { font-family: 'DotGothic16', monospace; font-weight: 400; }
+        #three-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; outline: none; }
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
+            20% { text-shadow: 1px 1px #ff00ff, -1px -1px #00ffff; transform: translate(-1px, 1px); }
+            40% { text-shadow: -2px 1px #ff00ff, 2px -1px #00ffff; transform: translate(1px, -1px); }
+            60% { text-shadow: 1px -2px #ff00ff, -1px 2px #00ffff; transform: translate(-1px, 1px); }
+            80% { text-shadow: -1px 2px #ff00ff, 1px -2px #00ffff; transform: translate(1px, -1px); }
+            100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; transform: translate(0); }
+        }
+        .glitch-text { animation: glitch 0.5s cubic-bezier(.25, .46, .45, .94) both infinite; }
+        .neon-shadow { text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0, 0 0 20px #e0e0e0, 0 0 40px #e0e0e0; }
+        .content-box {
+            background-color: rgba(16, 16, 16, 0.75);
+            backdrop-filter: blur(10px) saturate(200%);
+            -webkit-backdrop-filter: blur(10px) saturate(200%);
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 0 15px rgba(224, 224, 224, 0.3);
+        }
+        ::selection { background: #ff00ff; color: #000000; }
+        .content-box-inner::-webkit-scrollbar { width: 8px; }
+        .content-box-inner::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
+        .content-box-inner::-webkit-scrollbar-thumb { background-color: #e0e0e0; border: 1px solid #000; }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+            text-shadow: 0 0 5px #e0e0e0;
+            cursor: pointer;
+            text-align: center;
+        }
+        .nav-link:hover {
+            color: #000000;
+            background-color: #e0e0e0;
+            text-shadow: 0 0 5px #e0e0e0, 0 0 10px #e0e0e0;
+            box-shadow: 0 0 10px #e0e0e0, 0 0 20px #e0e0e0;
+        }
+
+        /* Estilos de Impresión (Clave para esta página) */
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                overflow: visible !important;
+            }
+            #three-canvas, footer {
+                display: none !important;
+            }
+            #main-receipt-container {
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: #ffffff !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                color: #000 !important;
+            }
+            .content-box-inner {
+                border: none !important;
+                color: #000 !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 12pt !important;
+            }
+            h1, h2, p, strong {
+                color: #000 !important;
+                text-shadow: none !important;
+            }
+            .glitch-text { animation: none !important; }
+            .katakana, .text-yellow-300 { color: #000 !important; font-weight: bold; }
+            .text-gray-300 { color: #333 !important; }
+            .text-red-500 { color: #cc0000 !important; font-weight: bold; }
+            hr { border-color: #999 !important; }
+            .print-hide { display: none !important; }
+        }
+    </style>
+</head>
+<body class="w-full min-h-screen text-base sm:text-lg md:text-xl flex items-center justify-center py-10">
+
+    <!-- Canvas de Fondo 3D -->
+    <canvas id="three-canvas"></canvas>
+
+    <!-- UI Principal -->
+    <div id="main-app-container" class="relative w-full h-full p-2 sm:p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center">
+        
+        <main id="main-receipt-container" class="content-box rounded-lg w-full max-w-4xl p-3 sm:p-4 md:p-6 lg:p-8">
+            
+            <!-- Header: Logo -->
+            <header class="text-center mb-4 md:mb-6">
+                <h1 class="text-5xl sm:text-7xl md:text-8xl font-bold glitch-text" style="color: #ffffff; text-shadow: 3px 3px #00ff00, -3px -3px #ff00ff;">
+                    FUKURO
+                </h1>
+                <p class="text-2xl sm:text-3xl md:text-4xl katakana neon-shadow">フクロウ</p>
+                <p class="text-lg sm:text-xl md:text-3xl tracking-widest text-yellow-300" style="text-shadow: 0 0 5px #facc15, 0 0 10px #facc15;">
+                    A/V SYNTHESIS
+                </p>
+            </header>
+
+            <!-- Área de Contenido -->
+            <div id="content-area" class="content-box-inner overflow-y-auto p-4 border border-dashed border-gray-500/50 rounded-lg">
+                
+                <h2 class="text-2xl md:text-3xl neon-shadow mb-6 text-center">++ COTIZACIÓN ACEPTADA ++</h2>
+
+                <div id="receipt-content" class="space-y-3 mb-6 pr-2 text-lg">
+                    <!-- El contenido se inyectará aquí -->
+                    <p class="text-center text-yellow-300">// Cargando datos de la cotización...</p>
+                </div>
+
+                <div classF="mt-6 text-center print-hide">
+                    <p class="text-gray-300 mb-4">// Gracias por tu confianza. Esta página es tu recibo.</p>
+                    <button onclick="window.print()" class="nav-link px-6 py-3 rounded-lg border border-current text-lg">
+                        [ IMPRIMIR / GUARDAR COMO PDF ]
+                    </button>
+                    <a href="index.html" class="nav-link px-6 py-3 rounded-lg border border-current text-lg ml-4">
+                        [ VOLVER ]
+                    </a>
+                </div>
+
+            </div> <!-- Fin de content-area -->
+
+        </main>
+
+        <!-- Footer: Redes -->
+        <footer class="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 flex gap-2 sm:gap-4 text-xl sm:text-2xl md:text-3xl print-hide">
+            <a href="#" class="nav-link p-2 rounded-lg" title="SoundCloud">SC</a>
+            <a href="#" class="nav-link p-2 rounded-lg" title="Vimeo">VM</a>
+            <a href="#" class="nav-link p-2 rounded-lg" title="Instagram">IG</a>
+        </footer>
+
+    </div>
+
+    <!-- Cargar el archivo JavaScript de esta página -->
+    <script type="module" src="cotizacion.js"></script>
+    
+</body>
+</html>
