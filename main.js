@@ -9,50 +9,10 @@ let currentFormData = null;
 const modal = document.getElementById('quote-modal');
 const modifyBtn = document.getElementById('modify-quote-btn');
 const acceptBtn = document.getElementById('accept-quote-btn');
-const printBtn = document.getElementById('print-quote-btn'); 
 const modalOverlay = document.getElementById('modal-overlay');
-
-// Función de Descarga de PNG
-async function downloadQuotePNG() {
-    const modalContent = document.getElementById('quote-modal-content');
-    const projectName = document.getElementById('project-name')?.value || 'Cotizacion';
-    const filename = `Cotizacion_${projectName.replace(/ /g, '_')}.png`;
-
-    // Ocultar botones para la captura
-    const controls = document.getElementById('modal-controls');
-    const originalDisplay = controls.style.display; // Guardar estado original
-    controls.style.display = 'none';
-    
-    try {
-        const canvas = await html2canvas(modalContent, {
-            backgroundColor: null, // Captura transparencia
-            logging: false,
-            useCORS: true // Intentar usar CORS para fuentes
-        });
-        
-        // Crear link de descarga
-        const image = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.href = image;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-    } catch (err) {
-        console.error("Error al generar PNG:", err);
-        alert("Error al generar imagen. Intenta imprimir (Ctrl+P) en su lugar.");
-    }
-
-    // Volver a mostrar botones
-    controls.style.display = originalDisplay; // Restablecer
-}
 
 function showModal() {
     modal.classList.remove('hidden');
-    
-    // Conectar el botón de imprimir
-    printBtn.onclick = downloadQuotePNG;
 }
 
 function hideModal() { 
@@ -61,10 +21,7 @@ function hideModal() {
     statusDiv.innerHTML = "";
     acceptBtn.disabled = false;
     acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
-    
-    if (printBtn) {
-        printBtn.onclick = null; 
-    }
+    modifyBtn.disabled = false;
 }
 
 modifyBtn.addEventListener('click', hideModal);
@@ -347,8 +304,10 @@ function handleGenerateQuote(event) {
     summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${currentFormData.get('timeline') || 'N/A'}</p>`;
     
     const urgencyFeeNote = document.getElementById('urgency-fee-note');
+    let urgencyNoteText = "";
     if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
-        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
+        urgencyNoteText = urgencyFeeNote.textContent; // Guardar el texto
+        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyNoteText.split(': ')[1]}</p>`;
     }
 
     summaryHTML += `
@@ -364,6 +323,41 @@ function handleGenerateQuote(event) {
     `;
     
     summaryDiv.innerHTML = summaryHTML;
+
+    // *** NUEVA LÓGICA: Guardar datos en sessionStorage para la redirección ***
+    const quoteDataForRedirect = {
+        name: currentFormData.get('name'),
+        email: currentFormData.get('email'),
+        projectName: currentFormData.get('project-name'),
+        timeline: currentFormData.get('timeline'),
+        brief: currentFormData.get('brief'),
+        total: currentFormData.get('cotizacion_estimada'),
+        isExisting: isExistingProject,
+        baseFee: baseFee,
+        urgencyNote: urgencyNoteText,
+        isAudio: isAudio,
+        audioQty: currentFormData.get('audio_quantity'),
+        audioMin: currentFormData.get('audio_min'),
+        audioSec: currentFormData.get('audio_sec'),
+        audioFormat: currentFormData.get('format_av_audio'),
+        audioRes: currentFormData.get('resolution_av_audio'),
+        audioFee: audioFee,
+        isVideo: isVideo,
+        videoQty: currentFormData.get('video_quantity'),
+        videoMin: currentFormData.get('video_min'),
+        videoSec: currentFormData.get('video_sec'),
+        videoFormat: currentFormData.get('format_av_video'),
+        videoRes: currentFormData.get('resolution_av_video'),
+        videoFee: videoFee
+    };
+    try {
+        sessionStorage.setItem('fukuroQuote', JSON.stringify(quoteDataForRedirect));
+    } catch (e) {
+        console.error("Error al guardar en sessionStorage:", e);
+        // No detener el envío del formulario, solo fallará la redirección
+    }
+    // *** FIN DE LA NUEVA LÓGICA ***
+
     showModal();
 }
 
@@ -373,7 +367,6 @@ async function sendFormToSpree(formData) {
     statusDiv.innerHTML = '<p class="text-yellow-300">// TRANSMITIENDO_DATOS...</p>';
     acceptBtn.disabled = true;
     acceptBtn.textContent = "[ ... ]";
-    printBtn.disabled = true;
     modifyBtn.disabled = true;
 
     try {
@@ -389,23 +382,19 @@ async function sendFormToSpree(formData) {
             statusDiv.innerHTML = `
                 <p class="text-gray-200 neon-shadow">++ TRANSMISIÓN_EXITOSA ++</p>
                 <p class="mt-1">// Hemos recibido tu solicitud.</p>
+                <p class="text-yellow-300 mt-2">// Redirigiendo a tu recibo...</p>
             `;
             
-            // -- ¡NUEVO! Descargar PNG al enviar --
-            try {
-                await downloadQuotePNG(); 
-            } catch (pngError) {
-                console.error("Fallo al descargar PNG, pero el formulario se envió.", pngError);
-                statusDiv.innerHTML += `<p class="text-sm text-yellow-300/80">(Error al descargar el PNG, pero tu cotización fue enviada.)</p>`;
-            }
-            // ------------------------------------
+            // --- ¡NUEVO! Redirección ---
+            setTimeout(() => {
+                window.location.href = 'cotizacion.html'; 
+            }, 1500); // Esperar 1.5 seg antes de redirigir
 
             currentForm.reset();
             setupQuoteCalculator(); // Recalcular (para resetear todo)
-            printBtn.disabled = true;
             modifyBtn.disabled = true;
             acceptBtn.disabled = true;
-            setTimeout(hideModal, 4000); 
+            
         } else {
             const responseData = await response.json();
             if (Object.hasOwn(responseData, 'errors')) {
@@ -420,8 +409,10 @@ async function sendFormToSpree(formData) {
         statusDiv.innerHTML = `<p class="text-red-500">-- ERROR: FALLA_TRANSMISIÓN --</p><p>// ${error.message || 'Intenta de nuevo o contacta directamente.'}</p>`;
         acceptBtn.disabled = false;
         acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
-        printBtn.disabled = false;
         modifyBtn.disabled = false;
+        
+        // Limpiar datos de sessionStorage si el envío falla
+        sessionStorage.removeItem('fukuroQuote');
     }
 }
 
