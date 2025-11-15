@@ -3216,6 +3216,16 @@ function setupLoginSystem() {
         console.warn('Back to menu from quote button not found!');
     }
 
+    // Setup admin logout button
+    const adminLogoutBtn = document.getElementById('admin-logout-btn');
+    if (adminLogoutBtn) {
+        console.log('Admin logout button found, adding listener');
+        adminLogoutBtn.addEventListener('click', () => {
+            console.log('Admin logout button clicked!');
+            logout();
+        });
+    }
+
     console.log('Login system setup complete');
 }
 
@@ -3223,6 +3233,13 @@ function showViewForUser(user) {
     if (user.role === 'admin') {
         // Admin goes directly to quote view and sees backend button
         document.getElementById('backend-login-container').classList.remove('hidden');
+        
+        // Show logout button for admin
+        const adminLogoutBtn = document.getElementById('admin-logout-btn');
+        if (adminLogoutBtn) {
+            adminLogoutBtn.classList.remove('hidden');
+        }
+        
         showView('quote-view');
     } else if (user.role === 'client') {
         // Client (penthouse) sees the menu
@@ -3260,6 +3277,13 @@ function logout() {
     if (backendContainer) {
         backendContainer.classList.add('hidden');
         console.log('Hidden backend login container');
+    }
+    
+    // Hide admin logout button
+    const adminLogoutBtn = document.getElementById('admin-logout-btn');
+    if (adminLogoutBtn) {
+        adminLogoutBtn.classList.add('hidden');
+        console.log('Hidden admin logout button');
     }
     
     // Hide backend dashboard if open
