@@ -81,80 +81,6 @@
         .content-box-inner::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); }
         .content-box-inner::-webkit-scrollbar-thumb { background-color: #e0e0e0; border: 1px solid #000; } /* Scrollbar Blanca */
 
-        /* Audio/Video Player Styling - Minimal */
-        audio, video {
-            background-color: #000;
-            border: 1px solid #e0e0e0;
-            border-radius: 0;
-            box-shadow: none;
-        }
-        
-        audio {
-            width: 100%;
-            height: 40px;
-        }
-        
-        video {
-            width: 100%;
-            background-color: #000;
-            border-radius: 0;
-        }
-        
-        /* Hide everything except play button, timeline, and time */
-        audio::-webkit-media-controls-enclosure,
-        video::-webkit-media-controls-enclosure {
-            background-color: #000;
-            border-radius: 0;
-        }
-        
-        audio::-webkit-media-controls-panel,
-        video::-webkit-media-controls-panel {
-            background-color: #000;
-            border-radius: 0;
-        }
-        
-        /* Show and style play button */
-        audio::-webkit-media-controls-play-button,
-        video::-webkit-media-controls-play-button {
-            filter: invert(1) brightness(2);
-        }
-        
-        /* Show and style timeline */
-        audio::-webkit-media-controls-timeline,
-        video::-webkit-media-controls-timeline {
-            filter: invert(1) brightness(1.5);
-            border-radius: 0;
-        }
-        
-        /* Show and style time displays */
-        audio::-webkit-media-controls-current-time-display,
-        audio::-webkit-media-controls-time-remaining-display,
-        video::-webkit-media-controls-current-time-display,
-        video::-webkit-media-controls-time-remaining-display {
-            color: #e0e0e0;
-            text-shadow: none;
-        }
-        
-        /* Hide volume controls */
-        audio::-webkit-media-controls-volume-slider-container,
-        video::-webkit-media-controls-volume-slider-container,
-        audio::-webkit-media-controls-mute-button,
-        video::-webkit-media-controls-mute-button {
-            display: none;
-        }
-        
-        /* Hide fullscreen button */
-        video::-webkit-media-controls-fullscreen-button,
-        video::-webkit-media-controls-toggle-closed-captions-button {
-            display: none;
-        }
-        
-        /* Hide overflow menu */
-        audio::-webkit-media-controls-overflow-button,
-        video::-webkit-media-controls-overflow-button {
-            display: none;
-        }
-
         .nav-link {
             transition: all 0.2s ease-in-out;
             text-shadow: 0 0 5px #e0e0e0; /* Sombra de texto Blanca */
@@ -304,6 +230,16 @@
                 display: none !important;
             }
         }
+        
+        /* Style the date picker calendar icon to be yellow */
+        #date-picker-input::-webkit-calendar-picker-indicator {
+            filter: invert(85%) sepia(69%) saturate(500%) hue-rotate(0deg) brightness(105%) contrast(103%);
+            cursor: pointer;
+        }
+        
+        #date-picker-input::-webkit-calendar-picker-indicator:hover {
+            filter: invert(85%) sepia(69%) saturate(700%) hue-rotate(0deg) brightness(110%) contrast(103%);
+        }
     </style>
 </head>
 <body class="w-full h-screen overflow-hidden text-base sm:text-lg md:text-xl">
@@ -404,6 +340,174 @@
                     <div id="chat-status" class="text-center text-sm"></div>
                 </div>
                 
+                <!-- Form removed - Now using direct data flow: GPT → Data → Calculate → Display -->
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="name" class="form-label">[ NOMBRE_CLIENTE ] (Opcional)</label>
+                            <input type="text" id="name" name="name" class="form-input text-lg">
+                            <div id="name-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                        </div>
+                        <div>
+                            <label for="email" class="form-label">[ EMAIL_CLIENTE ] (Opcional)</label>
+                            <input type="email" id="email" name="email" class="form-input text-lg">
+                            <div id="email-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Campos ocultos de Formspree -->
+                    <input type="hidden" name="_replyto" id="form-replyto">
+                    <input type="hidden" name="_subject" id="form-subject">
+
+
+                    <div>
+                        <label for="project-name" class="form-label">[ NOMBRE_PROYECTO ]</label>
+                        <input type="text" id="project-name" name="project-name" class="form-input text-lg" required>
+                        <div id="project-name-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                    </div>
+
+                    <!-- Checkbox de Proyecto Existente -->
+                    <div class="pl-4">
+                        <label class="flex items-center text-yellow-300">
+                            <input type="checkbox" id="existing-project" name="existing-project" value="true" class="form-checkbox">
+                            <span class="ml-3">¿Es un añadido a un proyecto existente?</span>
+                        </label>
+                    </div>
+
+
+                    <!-- Calculadora de Cotización (LÓGICA DE CHECKBOX) -->
+                    <div id="quote-form-calculator" class="space-y-4">
+                        <label class="form-label">[ SERVICIOS REQUERIDOS ]</label>
+
+                        <div class="space-y-3" id="service-group">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="service-audio" name="service_type" value="Audio" class="form-checkbox">
+                                <span class="ml-3">PRODUCCIÓN DE AUDIO</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="service-video" name="service_type" value="Video" class="form-checkbox">
+                                <span class="ml-3">PRODUCCIÓN DE VIDEO (incluye audio del video)</span>
+                            </label>
+                        </div>
+                        <div id="service-type-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                        
+                        <!-- Contenedor Dinámico para Audio -->
+                        <div id="audio-controls-container" class="hidden space-y-4 pt-4 border-t border-dashed border-gray-500/50">
+                            <h3 class="text-xl text-yellow-300">[ DETALLES DE AUDIO ]</h3>
+                            <div class="w-full sm:w-1/2">
+                                <label for="audio_quantity" class="form-label">[ CANTIDAD DE ENTREGABLES (Audio) ]</label>
+                                <select id="audio_quantity" name="audio_quantity" class="form-select text-lg">
+                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10+</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">[ DURACIÓN (POR C/U) (Audio) ]</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="audio_min" class="form-label text-sm">[ MINUTOS ]</label>
+                                        <input type="number" id="audio_min" name="audio_min" class="form-input text-lg" min="0" value="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label for="audio_sec" class="form-label text-sm">[ SEGUNDOS ]</label>
+                                        <input type="number" id="audio_sec" name="audio_sec" class="form-input text-lg" min="0" max="59" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="format_av_audio" class="form-label text-sm">[ FORMATO (.WAV, .MP3...) ]</label>
+                                    <input type="text" id="format_av_audio" name="format_av_audio" class="form-input text-lg" placeholder=".WAV, .MP3">
+                                </div>
+                                <div>
+                                    <label for="resolution_av_audio" class="form-label text-sm">[ CALIDAD (48kHz/24bit...) ]</label>
+                                    <input type="text" id="resolution_av_audio" name="resolution_av_audio" class="form-input text-lg" placeholder="48kHz/24bit">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contenedor Dinámico para Video -->
+                        <div id="video-controls-container" class="hidden space-y-4 pt-4 border-t border-dashed border-gray-500/50">
+                            <h3 class="text-xl text-yellow-300">[ DETALLES DE VIDEO ]</h3>
+                            <div class="w-full sm:w-1/2">
+                                <label for="video_quantity" class="form-label">[ CANTIDAD DE ENTREGABLES (Video) ]</label>
+                                <select id="video_quantity" name="video_quantity" class="form-select text-lg">
+                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10+</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">[ DURACIÓN (POR C/U) (Video) ]</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="video_min" class="form-label text-sm">[ MINUTOS ]</label>
+                                        <input type="number" id="video_min" name="video_min" class="form-input text-lg" min="0" value="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label for="video_sec" class="form-label text-sm">[ SEGUNDOS ]</label>
+                                        <input type="number" id="video_sec" name="video_sec" class="form-input text-lg" min="0" max="59" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="format_av_video" class="form-label text-sm">[ FORMATO (.MP4, .MOV...) ]</label>
+                                    <input type="text" id="format_av_video" name="format_av_video" class="form-input text-lg" placeholder=".MP4, .MOV">
+                                </div>
+                                <div>
+                                    <label for="resolution_av_video" class="form-label text-sm">[ RESOLUCIÓN (4K, 1080p...) ]</label>
+                                    <input type="text" id="resolution_av_video" name="resolution_av_video" class="form-input text-lg" placeholder="4K, 1080p">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inputs Ocultos para cálculos -->
+                        <input type="hidden" id="calculated_base_fee" name="calculated_base_fee">
+                        <input type="hidden" id="calculated_audio_fee" name="calculated_audio_fee">
+                        <input type="hidden" id="calculated_video_fee" name="calculated_video_fee">
+
+                    </div>
+                    <!-- Fin de la Calculadora -->
+
+                    <!-- Contenedor de Cotización -->
+                    <div id="quote-display-container">
+                        <div id="quote-estimate-display">
+                            <label for="estimated-quote" class="form-label">[ COTIZACIÓN ESTIMADA (MXN) ]</label>
+                            <input type="text" id="estimated-quote" class="form-input text-lg text-yellow-300" readonly value="// SELECCIONA UN SERVICIO">
+                            <input type="hidden" name="cotizacion_estimada" id="hidden-quote">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="timeline" class="form-label">[ FECHA DE ENTREGA DESEADA ] (Opcional)</label>
+                        <input type="date" id="timeline" name="timeline" class="form-input text-lg">
+                        <div id="timeline-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                        <p id="urgency-fee-note" class="text-sm text-red-500 hidden mt-1">> Tarifa de Urgencia Aplicada: +40% sobre el total</p>
+                    </div>
+
+                    <div>
+                        <label for="brief" class="form-label">[ BRIEF / DESCRIPCIÓN DEL PROYECTO ]</label>
+                        <textarea id="brief" name="brief" rows="4" class="form-textarea text-lg" placeholder="Describe la visión, metas y entregables..." required></textarea>
+                        <div id="brief-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                    </div>
+
+                    <div>
+                        <label for="assets-link" class="form-label">[ LINK DE RECURSOS (ASSETS) ]</ISO_8601>
+                        <input type="url" id="assets-link" name="assets-link" class="form-input text-lg" placeholder="Link a WeTransfer, Drive... (guiones, refs visuales, audio, etc.)">
+                        <p class="text-sm mt-1 text-gray-300/70">> Sube tus archivos a la nube y pega el link para compartir aquí.</p>
+                    </div>
+                    
+                    <!-- Checkbox de Términos y Condiciones -->
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="terms-checkbox" name="terms" class="form-checkbox mt-1" required>
+                        <div class="flex-1">
+                            <label for="terms-checkbox" class="form-label mb-0 text-sm sm:text-base">
+                                Acepto los términos de servicio (pago contra-entrega, 3 revisiones, etc.)
+                            </label>
+                            <div id="terms-checkbox-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
+                        </div>
+                    </div>
+
 
             </div> <!-- Fin de content-area -->
 

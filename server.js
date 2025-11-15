@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,93 @@ const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Serve uploads directory with proper headers for media files
+app.use('/uploads', (req, res, next) => {
+    const filePath = req.path.toLowerCase();
+    
+    // Set explicit MIME types BEFORE serving the file
+    if (filePath.endsWith('.mp4')) {
+        res.setHeader('Content-Type', 'video/mp4');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        console.log('Serving MP4 video:', req.path, 'MIME: video/mp4');
+    } else if (filePath.endsWith('.webm')) {
+        res.setHeader('Content-Type', 'video/webm');
+    } else if (filePath.endsWith('.mov')) {
+        res.setHeader('Content-Type', 'video/quicktime');
+    } else if (filePath.endsWith('.avi')) {
+        res.setHeader('Content-Type', 'video/x-msvideo');
+    } else if (filePath.endsWith('.mp3')) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+    } else if (filePath.endsWith('.m4a')) {
+        res.setHeader('Content-Type', 'audio/mp4');
+    } else if (filePath.endsWith('.wav')) {
+        res.setHeader('Content-Type', 'audio/wav');
+    } else if (filePath.endsWith('.ogg')) {
+        res.setHeader('Content-Type', 'audio/ogg');
+    }
+    
+    // CORS headers for media playback
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+    
+    // Allow range requests for media streaming (seeking)
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    // Cache control
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    
+    // Continue to static file serving
+    next();
+}, express.static(uploadsDir));
+
+// Configure multer for file uploads with versioning
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // Get projectId from URL params (more reliable than body)
+        const projectId = req.params.id || 'general';
+        const projectDir = path.join(uploadsDir, projectId);
+        
+        // Create project directory if it doesn't exist
+        if (!fs.existsSync(projectDir)) {
+            fs.mkdirSync(projectDir, { recursive: true });
+        }
+        
+        cb(null, projectDir);
+    },
+    filename: function (req, file, cb) {
+        // Get projectId from URL params
+        const projectId = req.params.id || 'general';
+        const projectDir = path.join(uploadsDir, projectId);
+        const originalName = file.originalname;
+        const ext = path.extname(originalName);
+        const baseName = path.basename(originalName, ext);
+        
+        // Check for existing files with same name
+        let fileName = originalName;
+        let version = 1;
+        
+        while (fs.existsSync(path.join(projectDir, fileName))) {
+            fileName = `${baseName}_v${version}${ext}`;
+            version++;
+        }
+        
+        cb(null, fileName);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit
+});
 
 // Initialize data files if they don't exist
 if (!fs.existsSync(PROJECTS_FILE)) {
@@ -110,21 +198,56 @@ app.get('/api/projects/:name', (req, res) => {
 // POST /api/projects - Create or update project
 app.post('/api/projects', (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, oldName } = req.body;
         if (!name) {
             return res.status(400).json({ success: false, error: 'Project name is required' });
         }
 
         const projects = readProjects();
-        const existingIndex = projects.findIndex(p => 
-            p.name.toLowerCase() === name.toLowerCase()
-        );
+        let existingIndex = -1;
+        
+        // If oldName is provided, we're renaming a project
+        if (oldName) {
+            existingIndex = projects.findIndex(p => 
+                p.name.toLowerCase() === oldName.toLowerCase()
+            );
+            
+            if (existingIndex < 0) {
+                return res.status(404).json({ success: false, error: 'Project not found' });
+            }
+            
+            // Check if new name already exists
+            const nameExists = projects.some(p => 
+                p.name.toLowerCase() === name.toLowerCase() && p.name !== oldName
+            );
+            
+            if (nameExists) {
+                return res.status(400).json({ success: false, error: 'Project name already exists' });
+            }
+            
+            // Update quotes with the new project name
+            const quotes = readQuotes();
+            quotes.forEach(quote => {
+                if (quote['project-name'] === oldName) {
+                    quote['project-name'] = name;
+                }
+            });
+            writeQuotes(quotes);
+        } else {
+            // Check if project already exists
+            existingIndex = projects.findIndex(p => 
+                p.name.toLowerCase() === name.toLowerCase()
+            );
+        }
 
         const projectData = {
+            id: existingIndex >= 0 ? projects[existingIndex].id : Date.now().toString(),
             name,
             createdAt: existingIndex >= 0 ? projects[existingIndex].createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            quoteCount: existingIndex >= 0 ? (projects[existingIndex].quoteCount || 0) : 0
+            quoteCount: existingIndex >= 0 ? (projects[existingIndex].quoteCount || 0) : 0,
+            links: existingIndex >= 0 ? (projects[existingIndex].links || []) : [],
+            deliverables: existingIndex >= 0 ? (projects[existingIndex].deliverables || []) : []
         };
 
         if (existingIndex >= 0) {
@@ -182,10 +305,13 @@ app.post('/api/quotes', (req, res) => {
         } else {
             // Create project if it doesn't exist
             projects.push({
+                id: Date.now().toString(),
                 name: projectName,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                quoteCount: 1
+                quoteCount: 1,
+                links: [],
+                deliverables: []
             });
             writeProjects(projects);
         }
@@ -203,6 +329,130 @@ app.get('/api/quotes', (req, res) => {
         const quotes = readQuotes();
         res.json({ success: true, quotes });
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /api/projects/:id/quotes - Get quotes for specific project
+app.get('/api/projects/:id/quotes', (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const projects = readProjects();
+        const project = projects.find(p => p.id === projectId);
+        
+        if (!project) {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+        
+        const quotes = readQuotes();
+        const projectQuotes = quotes.filter(q => 
+            q['project-name'] && q['project-name'].toLowerCase() === project.name.toLowerCase()
+        );
+        
+        res.json({ success: true, quotes: projectQuotes });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PUT /api/projects/:id - Update project (links, deliverables)
+app.put('/api/projects/:id', (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const { links, deliverables } = req.body;
+        
+        const projects = readProjects();
+        const projectIndex = projects.findIndex(p => p.id === projectId);
+        
+        if (projectIndex < 0) {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+        
+        // Update project with new data
+        projects[projectIndex].links = links || [];
+        projects[projectIndex].deliverables = deliverables || [];
+        projects[projectIndex].updatedAt = new Date().toISOString();
+        
+        if (writeProjects(projects)) {
+            res.json({ success: true, project: projects[projectIndex] });
+        } else {
+            res.status(500).json({ success: false, error: 'Failed to update project' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /api/projects/:id/upload - Upload file for a project
+app.post('/api/projects/:id/upload', upload.single('file'), (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const { title, notes, isLink, linkUrl } = req.body;
+        
+        console.log('Upload request received:', {
+            projectId,
+            title,
+            isLink,
+            hasFile: !!req.file,
+            fileName: req.file ? req.file.filename : 'none'
+        });
+        
+        const projects = readProjects();
+        const projectIndex = projects.findIndex(p => p.id === projectId);
+        
+        if (projectIndex < 0) {
+            console.error('Project not found:', projectId);
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+        
+        const project = projects[projectIndex];
+        if (!project.deliverables) project.deliverables = [];
+        
+        let deliverable;
+        
+        if (isLink === 'true') {
+            // It's a link, not a file upload
+            deliverable = {
+                title: title || 'Link',
+                url: linkUrl,
+                notes: notes || '',
+                addedAt: new Date().toISOString(),
+                type: 'link'
+            };
+        } else {
+            // It's a file upload
+            if (!req.file) {
+                return res.status(400).json({ success: false, error: 'No file uploaded' });
+            }
+            
+            const fileUrl = `/uploads/${projectId}/${req.file.filename}`;
+            
+            deliverable = {
+                title: title || req.file.originalname,
+                url: fileUrl,
+                notes: notes || '',
+                filename: req.file.filename,
+                originalName: req.file.originalname,
+                fileSize: req.file.size,
+                addedAt: new Date().toISOString(),
+                type: 'file'
+            };
+        }
+        
+        project.deliverables.push(deliverable);
+        project.updatedAt = new Date().toISOString();
+        
+        if (writeProjects(projects)) {
+            res.json({ 
+                success: true, 
+                deliverable,
+                project: projects[projectIndex]
+            });
+        } else {
+            res.status(500).json({ success: false, error: 'Failed to update project' });
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

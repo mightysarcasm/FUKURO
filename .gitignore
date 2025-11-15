@@ -2,6 +2,7 @@
 config.js
 node_modules/
 data/
+uploads/
 *.log
 
 # Environment variables
