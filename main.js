@@ -137,8 +137,8 @@ function setupAcceptButton() {
 
     // 3. Enviar los datos FRESCOS a Formspree
     sendFormToSpree(currentFormData);
-});
-
+    });
+}
 
 // --- Lógica de Validación de Formulario Personalizada ---
 function validateForm() {
@@ -490,7 +490,6 @@ async function sendFormToSpree(formData) {
         // Limpiar datos de sessionStorage si el envío falla
         sessionStorage.removeItem('fukuroQuote');
     }
-    });
 }
 
 // --- Lógica de Three.js ---
