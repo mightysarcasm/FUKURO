@@ -1286,4 +1286,3 @@ if (userInput) {
 
 // Iniciar el fondo 3D
 initThree();
->>>>>>> 4b17024 (Major UX improvements: chat modal, voice recording, and validation fixes)
