@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import { google } from 'googleapis';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -457,8 +458,105 @@ app.post('/api/projects/:id/upload', upload.single('file'), (req, res) => {
     }
 });
 
+// Google Drive video streaming proxy
+// This allows us to stream Drive videos with automatic timestamps
+app.get('/api/drive-stream/:fileId', async (req, res) => {
+    const { fileId } = req.params;
+    const apiKey = req.query.key; // Optional: API key from query param
+    
+    console.log('Drive stream request for:', fileId);
+    
+    try {
+        // Initialize Drive API (no auth required for public files)
+        const drive = google.drive({ 
+            version: 'v3',
+            auth: apiKey || process.env.GOOGLE_DRIVE_API_KEY || null
+        });
+        
+        // Get file metadata first to check if it's accessible
+        let fileMetadata;
+        try {
+            const metadataResponse = await drive.files.get({
+                fileId: fileId,
+                fields: 'id, name, mimeType, size',
+                supportsAllDrives: true
+            });
+            fileMetadata = metadataResponse.data;
+            console.log('File metadata:', fileMetadata);
+        } catch (error) {
+            console.error('Failed to get file metadata:', error.message);
+            // If metadata fails, the file might not be public or doesn't exist
+            return res.status(403).json({ 
+                error: 'Unable to access file. Make sure the Drive file is publicly accessible.',
+                details: error.message 
+            });
+        }
+        
+        // Set appropriate headers for video streaming
+        res.setHeader('Content-Type', fileMetadata.mimeType || 'video/mp4');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+        
+        if (fileMetadata.size) {
+            res.setHeader('Content-Length', fileMetadata.size);
+        }
+        
+        // Handle range requests for seeking
+        const range = req.headers.range;
+        if (range && fileMetadata.size) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : parseInt(fileMetadata.size) - 1;
+            const chunksize = (end - start) + 1;
+            
+            res.status(206); // Partial Content
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileMetadata.size}`);
+            res.setHeader('Content-Length', chunksize);
+            
+            console.log(`Range request: ${start}-${end}/${fileMetadata.size}`);
+        }
+        
+        // Stream the file
+        const fileStream = await drive.files.get(
+            {
+                fileId: fileId,
+                alt: 'media',
+                supportsAllDrives: true
+            },
+            {
+                responseType: 'stream'
+            }
+        );
+        
+        // Pipe the Drive stream directly to the response
+        fileStream.data
+            .on('error', (err) => {
+                console.error('Stream error:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Stream error', details: err.message });
+                }
+            })
+            .on('end', () => {
+                console.log('Stream ended successfully');
+            })
+            .pipe(res);
+            
+    } catch (error) {
+        console.error('Drive streaming error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ 
+                error: 'Failed to stream video from Drive',
+                details: error.message,
+                hint: 'Make sure the file is publicly accessible and the sharing link is set to "Anyone with the link can view"'
+            });
+        }
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`FUKURO backend server running on http://localhost:${PORT}`);
+    console.log(`Drive streaming available at: http://localhost:${PORT}/api/drive-stream/:fileId`);
 });
 

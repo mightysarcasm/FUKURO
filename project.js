@@ -466,16 +466,22 @@ function displayFileDetails(index) {
                                 <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
                             </div>
                         ` : isDriveVideo ? `
-                            <iframe 
-                                id="drive-video-${index}"
-                                src="https://drive.google.com/file/d/${driveVideoId}/preview" 
-                                class="w-full bg-black rounded" 
-                                style="height: 500px; border: none;"
-                                allow="autoplay"
-                            ></iframe>
+                            <video 
+                                id="video-${index}"
+                                controls
+                                preload="metadata"
+                                playsinline
+                                style="width: 100%; max-height: 500px; background: #000; display: block;"
+                                onloadedmetadata="console.log('Drive video loaded via proxy:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
+                                onerror="handleDriveStreamError(${index}, '${driveVideoId}')"
+                            >
+                                <source src="${API_BASE_URL}/api/drive-stream/${driveVideoId}" type="video/mp4">
+                                <p class="text-red-300 p-4">Error al cargar video de Drive. <a href="${work.url}" target="_blank" class="underline">Abrir en Drive</a></p>
+                            </video>
                             <div class="mt-2 p-3 bg-blue-900/20 border border-blue-300/30 rounded">
-                                <p class="text-xs text-blue-300 mb-2">📹 <strong>Video de Google Drive</strong></p>
-                                <p class="text-xs text-gray-300">Para agregar timestamps: Pausa el video en el momento deseado, mira el tiempo en el reproductor de Drive, e ingrésalo manualmente abajo.</p>
+                                <p class="text-xs text-blue-300 mb-2">📹 <strong>Video de Google Drive (Streaming)</strong></p>
+                                <p class="text-xs text-gray-300">✅ Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
+                                <p class="text-xs text-gray-400 mt-1">Nota: El archivo debe tener permisos de "Cualquiera con el enlace puede ver"</p>
                             </div>
                         ` : `
                             <video 
@@ -494,34 +500,21 @@ function displayFileDetails(index) {
                         
                         <!-- Comment Form -->
                         <div class="mt-3 p-3 border border-gray-600 rounded">
-                            ${isDriveVideo ? `
-                                <div class="mb-3">
-                                    <label class="block text-xs text-gray-300 mb-1">Timestamp (MM:SS o M:SS)</label>
-                                    <input 
-                                        type="text" 
-                                        id="timestamp-${index}" 
-                                        class="form-input text-sm w-full" 
-                                        placeholder="Ej: 1:30, 0:45, 12:05"
-                                        onkeyup="validateTimeFormat(this)"
-                                    >
-                                    <p class="text-xs text-gray-400 mt-1">Ingresa el tiempo que ves en el reproductor de Drive</p>
-                                </div>
-                            ` : `
-                                <div class="flex gap-2 mb-2">
-                                    <button onclick="addTimestamp(${index}, 'video', ${isYouTubeVideo}, ${isVimeoVideo})" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
-                                        [ TIMESTAMP ACTUAL ]
-                                    </button>
-                                    <input 
-                                        type="text" 
-                                        id="timestamp-${index}" 
-                                        class="form-input text-xs flex-1" 
-                                        placeholder="00:00" 
-                                        readonly
-                                    >
-                                </div>
-                                ${isDropboxVideo ? '<p class="text-xs text-gray-400 mb-2">Timestamps automáticos desde Dropbox</p>' : ''}
-                                ${isVimeoVideo ? '<p class="text-xs text-purple-300 mb-2">Timestamps automáticos desde Vimeo</p>' : ''}
-                            `}
+                            <div class="flex gap-2 mb-2">
+                                <button onclick="addTimestamp(${index}, 'video', ${isYouTubeVideo}, ${isVimeoVideo})" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
+                                    [ TIMESTAMP ACTUAL ]
+                                </button>
+                                <input 
+                                    type="text" 
+                                    id="timestamp-${index}" 
+                                    class="form-input text-xs flex-1" 
+                                    placeholder="00:00" 
+                                    readonly
+                                >
+                            </div>
+                            ${isDropboxVideo ? '<p class="text-xs text-gray-400 mb-2">Timestamps automáticos desde Dropbox</p>' : ''}
+                            ${isVimeoVideo ? '<p class="text-xs text-purple-300 mb-2">Timestamps automáticos desde Vimeo</p>' : ''}
+                            ${isDriveVideo ? '<p class="text-xs text-blue-300 mb-2">Timestamps automáticos desde Google Drive</p>' : ''}
                             <textarea id="comment-${index}" class="form-textarea text-sm w-full" rows="2" placeholder="Escribe tu comentario..."></textarea>
                             <button onclick="saveComment(${index}, '${work.title}', 'video')" class="nav-link submit-btn px-3 py-1 rounded text-xs mt-2 w-full">
                                 [ GUARDAR COMENTARIO ]
@@ -1095,6 +1088,52 @@ window.handleDropboxError = function(index, convertedUrl, originalUrl) {
                     [ INTENTAR DESCARGA ]
                 </a>
                 <button onclick="retryVideo(${index}, '${convertedUrl}')" class="px-4 py-2 border border-gray-500 text-gray-300 hover:border-gray-400 rounded">
+                    [ REINTENTAR ]
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Handle Google Drive stream errors
+window.handleDriveStreamError = function(index, driveVideoId) {
+    const video = document.getElementById(`video-${index}`);
+    if (!video) return;
+    
+    console.error('Drive stream error:', video.error, 'File ID:', driveVideoId);
+    
+    const container = video.parentElement;
+    const errorCode = video.error ? video.error.code : 'unknown';
+    const driveUrl = `https://drive.google.com/file/d/${driveVideoId}/view`;
+    
+    container.innerHTML = `
+        <div class="p-6 bg-red-900/20 border border-red-500/50 rounded">
+            <p class="text-red-300 text-lg mb-2">⚠️ Error al cargar video de Google Drive</p>
+            <p class="text-gray-300 text-sm mb-4">El video no se pudo transmitir desde Drive. Posibles causas:</p>
+            <ul class="text-gray-400 text-sm mb-4 list-disc list-inside space-y-1">
+                <li><strong>Permisos:</strong> El archivo debe tener "Cualquiera con el enlace puede ver"</li>
+                <li><strong>Tipo de archivo:</strong> Verifica que sea un formato de video compatible (MP4, WebM)</li>
+                <li><strong>Cuota de Drive:</strong> El archivo puede haber excedido el límite de descargas diarias</li>
+            </ul>
+            
+            <div class="mb-4 p-3 bg-blue-900/30 border border-blue-300/30 rounded">
+                <p class="text-xs text-blue-300 mb-2">📋 <strong>Cómo arreglar los permisos:</strong></p>
+                <ol class="text-xs text-gray-300 space-y-1 list-decimal list-inside">
+                    <li>Abre el archivo en Google Drive</li>
+                    <li>Click derecho → "Compartir"</li>
+                    <li>Cambia a "Cualquiera con el enlace"</li>
+                    <li>Establece permisos como "Lector"</li>
+                    <li>Guarda y vuelve a cargar esta página</li>
+                </ol>
+            </div>
+            
+            <p class="text-yellow-300 text-sm mb-3">💡 <strong>Alternativa:</strong> Sube el video directamente o usa Vimeo/YouTube para timestamps automáticos</p>
+            
+            <div class="flex gap-3 justify-center flex-wrap">
+                <a href="${driveUrl}" target="_blank" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">
+                    [ VER EN DRIVE ]
+                </a>
+                <button onclick="location.reload()" class="px-4 py-2 border border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black rounded">
                     [ REINTENTAR ]
                 </button>
             </div>
