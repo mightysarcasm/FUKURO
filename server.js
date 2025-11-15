@@ -13,6 +13,12 @@ import jwt from 'jsonwebtoken';
 // Load environment variables
 dotenv.config();
 
+// Debug: Check if environment variables are loaded
+console.log('🔐 Environment variables loaded:');
+console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? `${process.env.OPENAI_API_KEY.substring(0, 20)}...` : '❌ NOT FOUND');
+console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? '✅ Found' : '❌ NOT FOUND');
+console.log('  - PORT:', process.env.PORT || 3000);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -285,6 +291,15 @@ app.post('/api/openai/chat', async (req, res) => {
         
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ success: false, error: 'Messages array required' });
+        }
+
+        // Check if API key is available
+        if (!process.env.OPENAI_API_KEY) {
+            console.error('OPENAI_API_KEY not found in environment variables');
+            return res.status(500).json({ 
+                success: false, 
+                error: 'OpenAI API key not configured on server. Please check .env file.' 
+            });
         }
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
