@@ -3066,6 +3066,8 @@ const USERS = {
 let currentUser = null;
 
 function setupLoginSystem() {
+    console.log('Setting up login system...');
+    
     // Check if already logged in
     const savedUser = sessionStorage.getItem('currentUser');
     if (savedUser) {
@@ -3083,6 +3085,13 @@ function setupLoginSystem() {
     const passwordInput = document.getElementById('login-password');
     const loginError = document.getElementById('login-error');
 
+    if (!loginBtn || !usernameInput || !passwordInput || !loginError) {
+        console.error('Login form elements not found!');
+        return;
+    }
+
+    console.log('Login form elements found, attaching listeners...');
+
     // Handle Enter key
     const handleEnter = (e) => {
         if (e.key === 'Enter') {
@@ -3092,9 +3101,14 @@ function setupLoginSystem() {
     usernameInput.addEventListener('keydown', handleEnter);
     passwordInput.addEventListener('keydown', handleEnter);
 
-    loginBtn.addEventListener('click', () => {
+    loginBtn.addEventListener('click', (e) => {
+        console.log('Login button clicked');
+        e.preventDefault();
+        
         const username = usernameInput.value.trim().toLowerCase();
         const password = passwordInput.value;
+
+        console.log('Attempting login with username:', username);
 
         if (!username || !password) {
             loginError.textContent = 'Por favor ingresa usuario y contraseña';
@@ -3104,12 +3118,14 @@ function setupLoginSystem() {
 
         const user = USERS[username];
         if (!user || user.password !== password) {
+            console.log('Invalid credentials');
             loginError.textContent = 'Usuario o contraseña incorrectos';
             loginError.classList.remove('hidden');
             return;
         }
 
         // Successful login
+        console.log('Login successful!', user);
         currentUser = { username, role: user.role };
         sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
         
@@ -3121,19 +3137,40 @@ function setupLoginSystem() {
     });
 
     // Setup menu buttons
-    document.getElementById('menu-proyectos-btn').addEventListener('click', () => {
-        showView('projects-dashboard-view');
-        loadUserProjects();
-    });
+    const proyectosBtn = document.getElementById('menu-proyectos-btn');
+    const cotizarBtn = document.getElementById('menu-cotizar-btn');
+    const logoutBtn = document.getElementById('menu-logout-btn');
+    const backToMenuBtn = document.getElementById('back-to-menu-btn');
+    const backToMenuFromQuoteBtn = document.getElementById('back-to-menu-from-quote-btn');
 
-    document.getElementById('menu-cotizar-btn').addEventListener('click', () => {
-        showView('quote-view');
-        document.getElementById('back-to-menu-from-quote-btn').classList.remove('hidden');
-    });
+    if (proyectosBtn) {
+        proyectosBtn.addEventListener('click', () => {
+            showView('projects-dashboard-view');
+            loadUserProjects();
+        });
+    }
 
-    document.getElementById('menu-logout-btn').addEventListener('click', logout);
-    document.getElementById('back-to-menu-btn').addEventListener('click', () => showView('menu-view'));
-    document.getElementById('back-to-menu-from-quote-btn').addEventListener('click', () => showView('menu-view'));
+    if (cotizarBtn) {
+        cotizarBtn.addEventListener('click', () => {
+            showView('quote-view');
+            const backBtn = document.getElementById('back-to-menu-from-quote-btn');
+            if (backBtn) backBtn.classList.remove('hidden');
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    if (backToMenuBtn) {
+        backToMenuBtn.addEventListener('click', () => showView('menu-view'));
+    }
+
+    if (backToMenuFromQuoteBtn) {
+        backToMenuFromQuoteBtn.addEventListener('click', () => showView('menu-view'));
+    }
+
+    console.log('Login system setup complete');
 }
 
 function showViewForUser(user) {
