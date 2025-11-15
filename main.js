@@ -981,7 +981,7 @@ async function handleParseInput() {
             addChatMessage(`Error: ${errorMsg}`, false);
             chatStatus.innerHTML = `<p class="text-red-500">-- ERROR: ${errorMsg} --</p>`;
             parseBtn.disabled = false;
-            parseBtn.textContent = '[ ANALIZAR Y LLENAR FORMULARIO ]';
+            parseBtn.textContent = '[ SEND ]';
             return;
         }
         
@@ -1000,7 +1000,7 @@ async function handleParseInput() {
     
     // Deshabilitar botón y mostrar estado
     parseBtn.disabled = true;
-    parseBtn.textContent = '[ ANALIZANDO... ]';
+    parseBtn.textContent = '[ SENDING... ]';
     chatStatus.innerHTML = '<p class="text-yellow-300">// Analizando tu mensaje...</p>';
     
     try {
@@ -1030,7 +1030,7 @@ async function handleParseInput() {
             addChatMessage(`Necesito más información: ${missingList}. Por favor, proporciona estos datos.`, false);
             chatStatus.innerHTML = `<p class="text-yellow-300">// Algunos datos faltan. Por favor, proporciona: ${missingList}</p>`;
             parseBtn.disabled = false;
-            parseBtn.textContent = '[ ENVIAR INFORMACIÓN ADICIONAL ]';
+            parseBtn.textContent = '[ SEND ADDITIONAL INFO ]';
             return;
         }
         
@@ -1040,14 +1040,92 @@ async function handleParseInput() {
         // Calcular la cotización automáticamente
         setupQuoteCalculator();
         
-        // Generar y mostrar el resumen de la cotización directamente (sin mostrar el formulario)
-        generateQuoteSummary(mergedData);
-        
-        // Mostrar el modal de cotización (invoice)
-        showModal();
-        
-        // Ocultar chat
-        if (chatInterface) chatInterface.classList.add('hidden');
+        // Esperar un momento para que la cotización se calcule completamente
+        // Luego generar el resumen usando la misma lógica que handleGenerateQuote
+        setTimeout(() => {
+            // Usar la misma lógica que handleGenerateQuote para generar el resumen
+            const summaryDiv = document.getElementById('quote-summary');
+            const isAudio = document.getElementById('service-audio').checked;
+            const isVideo = document.getElementById('service-video').checked;
+            const baseFee = parseFloat(document.getElementById('calculated_base_fee')?.value) || 0;
+            const audioFee = parseFloat(document.getElementById('calculated_audio_fee')?.value) || 0;
+            const videoFee = parseFloat(document.getElementById('calculated_video_fee')?.value) || 0;
+            const isExistingProject = document.getElementById('existing-project').checked;
+            
+            let servicesSelected = [];
+            if (isAudio) servicesSelected.push("Audio");
+            if (isVideo) servicesSelected.push("Video");
+
+            let summaryHTML = `
+                <p><strong class="text-gray-300">CLIENTE:</strong> ${document.getElementById('name').value || 'N/A'}</p>
+                <p><strong class="text-gray-300">EMAIL:</strong> ${document.getElementById('email').value || 'N/A'}</p>
+                <p><strong class="text-gray-300">PROYECTO:</strong> ${document.getElementById('project-name').value || 'N/A'}</p>
+                <hr class="border-gray-500/50 my-2">
+                <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
+            `;
+
+            if (isAudio) {
+                summaryHTML += `
+                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
+                        <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
+                        <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('audio_quantity').value}</p>
+                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('audio_min').value}m ${document.getElementById('audio_sec').value}s</p>
+                        <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_audio').value || 'N/A'} | ${document.getElementById('resolution_av_audio').value || 'N/A'}</p>
+                        <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
+                    </div>
+                `;
+            }
+
+            if (isVideo) {
+                summaryHTML += `
+                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
+                        <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
+                        <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('video_quantity').value}</p>
+                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('video_min').value}m ${document.getElementById('video_sec').value}s</p>
+                        <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_video').value || 'N/A'} | ${document.getElementById('resolution_av_video').value || 'N/A'}</p>
+                        <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
+                    </div>
+                `;
+            }
+
+            summaryHTML += `<hr class="border-gray-500/50 my-2">`;
+            
+            if (isExistingProject) {
+                 summaryHTML += `<p><strong class="text-yellow-300">TARIFA BASE (Proyecto):</strong> $0.00 MXN (Proyecto existente)</p>`;
+            } else if (isAudio || isVideo) {
+                 summaryHTML += `<p><strong class="text-gray-300">TARIFA BASE (Proyecto):</strong> $${baseFee.toFixed(2)} MXN</p>`;
+                 summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
+            }
+
+            summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${document.getElementById('timeline').value || 'N/A'}</p>`;
+            
+            const urgencyFeeNote = document.getElementById('urgency-fee-note');
+            if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
+                summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
+            }
+
+            summaryHTML += `
+                <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${document.getElementById('hidden-quote').value}</p>
+                <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
+                
+                <hr class="border-gray-500/50 my-2">
+                <p><strong class="text-gray-300">BRIEF:</strong></p>
+                <p class="whitespace-pre-wrap">${document.getElementById('brief').value || 'N/A'}</p>
+                <hr class="border-gray-500/50 my-2">
+                <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
+                <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
+            `;
+            
+            if (summaryDiv) {
+                summaryDiv.innerHTML = summaryHTML;
+            }
+            
+            // Mostrar el modal de cotización (invoice)
+            showModal();
+            
+            // Ocultar chat
+            if (chatInterface) chatInterface.classList.add('hidden');
+        }, 100); // Pequeño delay para asegurar que el cálculo se complete
         
         // Limpiar historial para próxima vez
         conversationHistory = [];
@@ -1192,15 +1270,12 @@ function startRecording() {
         isRecording = true;
         
         const recordBtn = document.getElementById('record-voice-btn');
-        const recordIcon = document.getElementById('record-icon');
         const recordText = document.getElementById('record-text');
         const recordingStatus = document.getElementById('recording-status');
         
         if (recordBtn) {
-            recordBtn.classList.remove('border-red-500', 'text-red-300', 'hover:bg-red-500');
-            recordBtn.classList.add('bg-red-500', 'text-black', 'border-red-600');
+            recordBtn.classList.add('opacity-75');
         }
-        if (recordIcon) recordIcon.textContent = '⏹️';
         if (recordText) recordText.textContent = '[ DETENER ]';
         if (recordingStatus) recordingStatus.classList.remove('hidden');
         
@@ -1224,15 +1299,12 @@ function stopRecording() {
     isRecording = false;
     
     const recordBtn = document.getElementById('record-voice-btn');
-    const recordIcon = document.getElementById('record-icon');
     const recordText = document.getElementById('record-text');
     const recordingStatus = document.getElementById('recording-status');
     
     if (recordBtn) {
-        recordBtn.classList.remove('bg-red-500', 'text-black', 'border-red-600');
-        recordBtn.classList.add('border-red-500', 'text-red-300', 'hover:bg-red-500');
+        recordBtn.classList.remove('opacity-75');
     }
-    if (recordIcon) recordIcon.textContent = '🎤';
     if (recordText) recordText.textContent = '[ GRABAR VOZ ]';
     if (recordingStatus) recordingStatus.classList.add('hidden');
 }
