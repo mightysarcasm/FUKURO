@@ -154,8 +154,8 @@ function validateForm() {
     currentForm.querySelectorAll('.form-error').forEach(el => el.classList.add('hidden'));
     currentForm.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
 
-    // 1. Validar Campos Básicos (Proyecto y Timeline son requeridos, Name y Email son opcionales)
-    const requiredFields = ['project-name', 'timeline'];
+    // 1. Validar Campos Básicos (Solo project-name y brief son requeridos)
+    const requiredFields = ['project-name', 'brief'];
     requiredFields.forEach(id => {
         const input = document.getElementById(id);
         if (input.value.trim() === '') {
@@ -175,14 +175,8 @@ function validateForm() {
         emailInput.classList.add('invalid');
     }
 
-    // 4. Validar Tipo de Servicio
-    const serviceAudio = document.getElementById('service-audio').checked;
-    const serviceVideo = document.getElementById('service-video').checked;
-    if (!serviceAudio && !serviceVideo) {
-        isValid = false;
-        document.getElementById('service-type-error').textContent = "Debes seleccionar al menos un servicio.";
-        document.getElementById('service-type-error').classList.remove('hidden');
-    }
+    // 4. Validar Tipo de Servicio (opcional, pero recomendado)
+    // Ya no es requerido - se puede generar cotización sin servicio específico
     
     // 6. Validar Términos
     const terms = document.getElementById('terms-checkbox');
@@ -329,7 +323,7 @@ function setupQuoteCalculator() {
             quoteDisplay.value = "// SELECCIONA UN SERVICIO";
         }
         
-        hiddenQuote.value = quoteDisplay.value;
+        hiddenQuote.value = totalQuote.toFixed(2); // Guardar el valor numérico
     }
     
     // --- LISTENERS (Escuchar cualquier cambio en el formulario) ---
@@ -350,86 +344,8 @@ function setupQuoteCalculator() {
 }
 
 // Función para generar el resumen de cotización desde datos parseados
-function generateQuoteSummary(data) {
-    const summaryDiv = document.getElementById('quote-summary');
-    if (!summaryDiv) return;
-    
-    const isAudio = data.serviceType && data.serviceType.includes('Audio');
-    const isVideo = data.serviceType && data.serviceType.includes('Video');
-    const isExistingProject = data.isExistingProject || false;
-    
-    // Obtener valores del formulario (ya llenado)
-    const baseFee = parseFloat(document.getElementById('calculated_base_fee')?.value) || 0;
-    const audioFee = parseFloat(document.getElementById('calculated_audio_fee')?.value) || 0;
-    const videoFee = parseFloat(document.getElementById('calculated_video_fee')?.value) || 0;
-    const totalQuote = document.getElementById('hidden-quote')?.value || 'N/A';
-    
-    let servicesSelected = [];
-    if (isAudio) servicesSelected.push("Audio");
-    if (isVideo) servicesSelected.push("Video");
-
-    let summaryHTML = `
-        <p><strong class="text-gray-300">CLIENTE:</strong> ${data.name || 'N/A'}</p>
-        <p><strong class="text-gray-300">EMAIL:</strong> ${data.email || 'N/A'}</p>
-        <p><strong class="text-gray-300">PROYECTO:</strong> ${data.projectName || 'N/A'}</p>
-        <hr class="border-gray-500/50 my-2">
-        <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
-    `;
-
-    if (isAudio && data.audio) {
-        summaryHTML += `
-            <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
-                <p><strong class="text-gray-300">Cantidad:</strong> ${data.audio.quantity || 1}</p>
-                <p><strong class="text-gray-300">Duración (c/u):</strong> ${data.audio.minutes || 0}m ${data.audio.seconds || 0}s</p>
-                <p><strong class="text-gray-300">Specs:</strong> ${data.audio.format || 'N/A'} | ${data.audio.resolution || 'N/A'}</p>
-                <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
-            </div>
-        `;
-    }
-
-    if (isVideo && data.video) {
-        summaryHTML += `
-            <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
-                <p><strong class="text-gray-300">Cantidad:</strong> ${data.video.quantity || 1}</p>
-                <p><strong class="text-gray-300">Duración (c/u):</strong> ${data.video.minutes || 0}m ${data.video.seconds || 0}s</p>
-                <p><strong class="text-gray-300">Specs:</strong> ${data.video.format || 'N/A'} | ${data.video.resolution || 'N/A'}</p>
-                <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
-            </div>
-        `;
-    }
-
-    summaryHTML += `<hr class="border-gray-500/50 my-2">`;
-    
-    if (isExistingProject) {
-         summaryHTML += `<p><strong class="text-yellow-300">TARIFA BASE (Proyecto):</strong> $0.00 MXN (Proyecto existente)</p>`;
-    } else if (isAudio || isVideo) {
-         summaryHTML += `<p><strong class="text-gray-300">TARIFA BASE (Proyecto):</strong> $${baseFee.toFixed(2)} MXN</p>`;
-         summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
-    }
-
-    summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${data.timeline || 'N/A'}</p>`;
-    
-    const urgencyFeeNote = document.getElementById('urgency-fee-note');
-    if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
-        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
-    }
-
-    summaryHTML += `
-        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${totalQuote}</p>
-        <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
-        
-        <hr class="border-gray-500/50 my-2">
-        <p><strong class="text-gray-300">BRIEF:</strong></p>
-        <p class="whitespace-pre-wrap">${data.brief || 'N/A'}</p>
-        <hr class="border-gray-500/50 my-2">
-        <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
-        <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
-    `;
-    
-    summaryDiv.innerHTML = summaryHTML;
-}
+// Esta función ahora está obsoleta ya que generateQuoteSummary se movió dentro de handleParseInput
+// function generateQuoteSummary(data) { ... } 
 
 // --- Lógica de Envío de Formulario ---
 function handleGenerateQuote(event) {
@@ -448,16 +364,27 @@ function handleGenerateQuote(event) {
     }
     document.getElementById('form-subject').value = document.getElementById('project-name').value || 'Nueva Cotización FUKURO';
 
-    // ** LÓGICA DE CAPTURA DE DATOS MOVIDA **
-    // Ya no se captura aquí, se captura al hacer clic en 'acceptBtn'
-    
+    // Generar el resumen de cotización y mostrar el modal
+    generateAndShowQuoteSummary();
+}
+
+/**
+ * Genera el resumen de la cotización basado en los valores actuales del formulario
+ * y luego muestra el modal.
+ */
+function generateAndShowQuoteSummary() {
     const summaryDiv = document.getElementById('quote-summary');
+    if (!summaryDiv) return;
+
     const isAudio = document.getElementById('service-audio').checked;
     const isVideo = document.getElementById('service-video').checked;
     const baseFee = parseFloat(document.getElementById('calculated_base_fee').value) || 0;
     const audioFee = parseFloat(document.getElementById('calculated_audio_fee').value) || 0;
     const videoFee = parseFloat(document.getElementById('calculated_video_fee').value) || 0;
     const isExistingProject = document.getElementById('existing-project').checked;
+    
+    // Asegurar que hidden-quote tiene el valor formateado (para el display final)
+    const totalQuote = document.getElementById('estimated-quote').value;
     
     let servicesSelected = [];
     if (isAudio) servicesSelected.push("Audio");
@@ -512,7 +439,7 @@ function handleGenerateQuote(event) {
     }
 
     summaryHTML += `
-        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${document.getElementById('hidden-quote').value}</p>
+        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${totalQuote}</p>
         <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
         
         <hr class="border-gray-500/50 my-2">
@@ -525,8 +452,6 @@ function handleGenerateQuote(event) {
     
     summaryDiv.innerHTML = summaryHTML;
     
-    // Ya no se guarda en sessionStorage aquí
-
     showModal();
 }
 
@@ -580,8 +505,8 @@ async function sendFormToSpree(formData) {
         acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
         modifyBtn.disabled = false;
         
-        // Limpiar datos de sessionStorage si el envío falla
-        sessionStorage.removeItem('fukuroQuote');
+        // Limpiar datos de sessionStorage solo si el envío falla
+        sessionStorage.removeItem('fukuroQuote'); 
     }
 }
 
@@ -622,7 +547,7 @@ function createOwl() {
     pupilL.position.set(-0.4, 0.3, 1.05);
     pupilR.position.set(0.4, 0.3, 1.05);
     owlGroup.add(pupilL);
-    owlGroup.add(pupilR);
+    owlGroup.add(pupulR);
 
     const beakGeo = new THREE.ConeGeometry(0.2, 0.4, 8);
     const beak = new THREE.Mesh(beakGeo, material);
@@ -763,10 +688,10 @@ Analiza el texto del usuario y extrae la siguiente información en formato JSON:
   "assetsLink": "link de recursos si se menciona"
 }
 
-CAMPOS REQUERIDOS para generar cotización: projectName, timeline, serviceType (al menos Audio o Video).
-name y email son OPCIONALES - solo extrae si se mencionan explícitamente.
+CAMPOS REQUERIDOS para generar cotización: projectName (nombre del proyecto) y brief (descripción del proyecto).
+name, email, timeline y serviceType son OPCIONALES - solo extrae si se mencionan explícitamente.
 Si algún campo no está presente en el texto, usa null. Para fechas, intenta interpretar usando el año actual. Ejemplos: "15 de diciembre" -> año actual-12-15, "25 noviembre" -> año actual-11-25, "mañana" -> fecha de mañana. SIEMPRE usa el año actual, nunca uses años pasados como 2024.
-Para serviceType, determina si menciona audio, video, o ambos.
+Para serviceType, determina si menciona audio, video, o ambos. Si no se menciona, deja null.
 Si el usuario está proporcionando información adicional en una conversación, solo extrae los campos nuevos o actualizados.
 Responde SOLO con el JSON, sin explicaciones adicionales.`;
 
@@ -923,19 +848,14 @@ function fillFormFromParsedData(data) {
 
 function getMissingFields(data) {
     const missing = [];
-    // Solo projectName, timeline y serviceType son requeridos para generar la cotización
-    const required = ['projectName', 'timeline'];
+    // Solo projectName y brief son requeridos para generar la cotización
+    const required = ['projectName', 'brief'];
     
     required.forEach(field => {
-        if (!data[field]) {
+        if (!data[field] || (typeof data[field] === 'string' && data[field].trim() === '')) {
             missing.push(field);
         }
     });
-    
-    // Verificar que al menos un servicio esté seleccionado
-    if (!data.serviceType || !Array.isArray(data.serviceType) || data.serviceType.length === 0) {
-        missing.push('serviceType');
-    }
     
     return missing;
 }
@@ -949,10 +869,10 @@ async function handleParseInput() {
     const parseBtn = document.getElementById('parse-input-btn');
     const chatStatus = document.getElementById('chat-status');
     const chatInterface = document.getElementById('chat-interface');
-    const formActions = document.getElementById('form-actions');
+    const form = document.getElementById('quote-form'); // Capturar el formulario
     
-    if (!userInput || !parseBtn || !chatStatus) {
-        console.error('Required elements not found');
+    if (!userInput || !parseBtn || !chatStatus || !form) {
+        console.error('Required elements not found (input, button, status, or form)');
         alert('Error: No se encontraron elementos necesarios. Por favor, recarga la página.');
         return;
     }
@@ -1022,8 +942,7 @@ async function handleParseInput() {
         if (missingFields.length > 0) {
             const fieldNames = {
                 'projectName': 'nombre del proyecto',
-                'timeline': 'fecha de entrega',
-                'serviceType': 'tipo de servicio (Audio o Video)'
+                'brief': 'descripción del proyecto (brief)'
             };
             
             const missingList = missingFields.map(f => fieldNames[f] || f).join(', ');
@@ -1034,98 +953,25 @@ async function handleParseInput() {
             return;
         }
         
-        // Llenar formulario con datos combinados (internamente, sin mostrar al usuario)
+        // ** INICIO DE CORRECCIÓN **
+        // 1. Mostrar el formulario (en caso de que estuviera oculto)
+        form.classList.remove('hidden'); 
+        
+        // 2. Llenar formulario con datos combinados
         fillFormFromParsedData(mergedData);
         
-        // Calcular la cotización automáticamente
-        setupQuoteCalculator();
+        // 3. Calcular la cotización automáticamente
+        // (Esto ya se hace dentro de fillFormFromParsedData, pero lo dejamos como fallback)
+        setupQuoteCalculator(); 
         
-        // Esperar un momento para que la cotización se calcule completamente
-        // Luego generar el resumen usando la misma lógica que handleGenerateQuote
+        // Ocultar chat
+        if (chatInterface) chatInterface.classList.add('hidden');
+        
+        // 4. Generar el resumen y mostrar el modal
         setTimeout(() => {
-            // Usar la misma lógica que handleGenerateQuote para generar el resumen
-            const summaryDiv = document.getElementById('quote-summary');
-            const isAudio = document.getElementById('service-audio').checked;
-            const isVideo = document.getElementById('service-video').checked;
-            const baseFee = parseFloat(document.getElementById('calculated_base_fee')?.value) || 0;
-            const audioFee = parseFloat(document.getElementById('calculated_audio_fee')?.value) || 0;
-            const videoFee = parseFloat(document.getElementById('calculated_video_fee')?.value) || 0;
-            const isExistingProject = document.getElementById('existing-project').checked;
-            
-            let servicesSelected = [];
-            if (isAudio) servicesSelected.push("Audio");
-            if (isVideo) servicesSelected.push("Video");
-
-            let summaryHTML = `
-                <p><strong class="text-gray-300">CLIENTE:</strong> ${document.getElementById('name').value || 'N/A'}</p>
-                <p><strong class="text-gray-300">EMAIL:</strong> ${document.getElementById('email').value || 'N/A'}</p>
-                <p><strong class="text-gray-300">PROYECTO:</strong> ${document.getElementById('project-name').value || 'N/A'}</p>
-                <hr class="border-gray-500/50 my-2">
-                <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
-            `;
-
-            if (isAudio) {
-                summaryHTML += `
-                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                        <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
-                        <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('audio_quantity').value}</p>
-                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('audio_min').value}m ${document.getElementById('audio_sec').value}s</p>
-                        <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_audio').value || 'N/A'} | ${document.getElementById('resolution_av_audio').value || 'N/A'}</p>
-                        <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
-                    </div>
-                `;
-            }
-
-            if (isVideo) {
-                summaryHTML += `
-                    <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
-                        <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
-                        <p><strong class="text-gray-300">Cantidad:</strong> ${document.getElementById('video_quantity').value}</p>
-                        <p><strong class="text-gray-300">Duración (c/u):</strong> ${document.getElementById('video_min').value}m ${document.getElementById('video_sec').value}s</p>
-                        <p><strong class="text-gray-300">Specs:</strong> ${document.getElementById('format_av_video').value || 'N/A'} | ${document.getElementById('resolution_av_video').value || 'N/A'}</p>
-                        <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
-                    </div>
-                `;
-            }
-
-            summaryHTML += `<hr class="border-gray-500/50 my-2">`;
-            
-            if (isExistingProject) {
-                 summaryHTML += `<p><strong class="text-yellow-300">TARIFA BASE (Proyecto):</strong> $0.00 MXN (Proyecto existente)</p>`;
-            } else if (isAudio || isVideo) {
-                 summaryHTML += `<p><strong class="text-gray-300">TARIFA BASE (Proyecto):</strong> $${baseFee.toFixed(2)} MXN</p>`;
-                 summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
-            }
-
-            summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${document.getElementById('timeline').value || 'N/A'}</p>`;
-            
-            const urgencyFeeNote = document.getElementById('urgency-fee-note');
-            if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
-                summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
-            }
-
-            summaryHTML += `
-                <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${document.getElementById('hidden-quote').value}</p>
-                <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
-                
-                <hr class="border-gray-500/50 my-2">
-                <p><strong class="text-gray-300">BRIEF:</strong></p>
-                <p class="whitespace-pre-wrap">${document.getElementById('brief').value || 'N/A'}</p>
-                <hr class="border-gray-500/50 my-2">
-                <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
-                <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
-            `;
-            
-            if (summaryDiv) {
-                summaryDiv.innerHTML = summaryHTML;
-            }
-            
-            // Mostrar el modal de cotización (invoice)
-            showModal();
-            
-            // Ocultar chat
-            if (chatInterface) chatInterface.classList.add('hidden');
-        }, 100); // Pequeño delay para asegurar que el cálculo se complete
+            generateAndShowQuoteSummary();
+        }, 100); 
+        // ** FIN DE CORRECCIÓN **
         
         // Limpiar historial para próxima vez
         conversationHistory = [];
@@ -1153,7 +999,10 @@ function resetToChat() {
     // Resetear todo
     chatMessages.innerHTML = '<div class="text-sm text-gray-300/70">// Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.</div>';
     userInput.value = '';
-    form.classList.add('hidden'); // Form siempre oculto
+    
+    // ** CORRECCIÓN: Ocultar el formulario al volver al chat **
+    form.classList.add('hidden'); 
+    
     chatInterface.classList.remove('hidden');
     form.reset();
     setupQuoteCalculator();
