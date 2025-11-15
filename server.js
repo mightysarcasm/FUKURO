@@ -278,6 +278,44 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 // API ROUTES
 // ============================================
 
+// POST /api/openai/chat - Proxy OpenAI requests (keeps API key secure)
+app.post('/api/openai/chat', async (req, res) => {
+    try {
+        const { messages, model } = req.body;
+        
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({ success: false, error: 'Messages array required' });
+        }
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: model || 'gpt-4o-mini',
+                messages: messages
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            console.error('OpenAI API error:', data);
+            return res.status(response.status).json({ 
+                success: false, 
+                error: data.error?.message || 'OpenAI API error' 
+            });
+        }
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('OpenAI proxy error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // GET /api/projects - Get all projects
 app.get('/api/projects', (req, res) => {
     try {

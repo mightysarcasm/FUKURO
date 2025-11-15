@@ -1,51 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// Importar API key desde config (gitignored)
-let CONFIG_API_KEY = null;
-// Cargar config de forma asíncrona
-(async () => {
-    try {
-        const config = await import('./config.js');
-        CONFIG_API_KEY = config.OPENAI_API_KEY;
-    } catch (e) {
-        console.log('config.js not found, will use other methods');
-    }
-})();
-
-// --- Configuración de API ---
-// IMPORTANTE: Para producción, usa un backend proxy para proteger tu API key
-// Por ahora, puedes configurar tu API key aquí o usar una variable de entorno
-function getOpenAIApiKey() {
-    // Primero intentar desde config.js (gitignored)
-    if (CONFIG_API_KEY && CONFIG_API_KEY.trim() !== '') {
-        return CONFIG_API_KEY;
-    }
-    
-    // Luego intentar variable de entorno
-    if (import.meta.env && import.meta.env.VITE_OPENAI_API_KEY) {
-        return import.meta.env.VITE_OPENAI_API_KEY;
-    }
-    
-    // Luego intentar localStorage
-    let storedKey = localStorage.getItem('openai_api_key');
-    if (storedKey && storedKey.trim() !== '') {
-        return storedKey;
-    }
-    
-    return null; // No pedir automáticamente, solo cuando se necesite
-}
-
-function requestApiKey() {
-    const userKey = prompt('Por favor, ingresa tu OpenAI API Key (se guardará localmente):');
-    if (userKey && userKey.trim()) {
-        localStorage.setItem('openai_api_key', userKey.trim());
-        return userKey.trim();
-    }
-    return null;
-}
-
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+// OpenAI API is now handled by the backend proxy
+// No need to expose API key to frontend!
 
 // Helper function to parse duration strings
 function parseDurationString(durationStr) {
@@ -1534,17 +1491,15 @@ Responde SOLO con el JSON, sin explicaciones adicionales.`;
     ];
 
     try {
-        const response = await fetch(OPENAI_API_URL, {
+        // Call our backend proxy instead of OpenAI directly (keeps API key secure)
+        const response = await fetch(`${API_BASE_URL}/api/openai/chat`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: 'gpt-4o-mini',
-                messages: messages,
-                temperature: 0.3,
-                max_tokens: 1000
+                messages: messages
             })
         });
 
@@ -1552,15 +1507,20 @@ Responde SOLO con el JSON, sin explicaciones adicionales.`;
             let errorMessage = 'Error al comunicarse con OpenAI';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error?.message || errorMessage;
+                errorMessage = errorData.error || errorMessage;
             } catch (e) {
                 errorMessage = `HTTP ${response.status}: ${response.statusText}`;
             }
             throw new Error(errorMessage);
         }
 
-        const data = await response.json();
-        const content = data.choices[0].message.content.trim();
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'OpenAI API error');
+        }
+        
+        const content = result.data.choices[0].message.content.trim();
         
         // Intentar extraer JSON del contenido (puede venir con markdown)
         let jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -1828,30 +1788,8 @@ async function handleParseInput() {
         return;
     }
     
-    // Verificar API key ANTES de continuar
-    let apiKey = getOpenAIApiKey();
-    
-    if (!apiKey || apiKey.trim() === '') {
-        console.log('No API key found, requesting from user');
-        addChatMessage('Se requiere una API Key de OpenAI para continuar.', false);
-        chatStatus.innerHTML = '<p class="text-yellow-300">// Solicitando API Key...</p>';
-        
-        // Intentar obtener la key
-        apiKey = requestApiKey();
-        
-        if (!apiKey || apiKey.trim() === '') {
-            const errorMsg = 'API Key requerida. Por favor, proporciona tu OpenAI API Key para continuar.';
-            console.error(errorMsg);
-            addChatMessage(`Error: ${errorMsg}`, false);
-            chatStatus.innerHTML = `<p class="text-red-500">-- ERROR: ${errorMsg} --</p>`;
-            parseBtn.disabled = false;
-            parseBtn.textContent = '[ SEND ]';
-            return;
-        }
-        
-        // Si obtuvimos la key, continuar
-        addChatMessage('API Key configurada. Continuando...', false);
-    }
+    // API key is now handled securely on the backend
+    console.log('Proceeding with GPT request via backend proxy');
     
     // Agregar mensaje del usuario al historial
     conversationHistory.push({ role: 'user', content: inputText });
