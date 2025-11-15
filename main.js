@@ -2359,6 +2359,9 @@ function displayBackendProjects(projectsList) {
                     <button class="view-project-quotes-btn nav-link submit-btn px-3 py-1 rounded text-xs" data-project-name="${project.name}">
                         [ VER COTIZACIONES ]
                     </button>
+                    <button class="upload-files-btn nav-link submit-btn px-3 py-1 rounded text-xs" data-project-id="${project.id}" data-project-name="${project.name}">
+                        [ SUBIR ARCHIVOS ]
+                    </button>
                 </div>
             </div>
             <div class="edit-project-form hidden mt-2" id="edit-form-${project.name.replace(/\s+/g, '-')}">
@@ -2426,6 +2429,15 @@ function displayBackendProjects(projectsList) {
         });
     });
     
+    // Add event listeners for upload files buttons
+    projectsListDiv.querySelectorAll('.upload-files-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const projectId = e.target.getAttribute('data-project-id');
+            const projectName = e.target.getAttribute('data-project-name');
+            await showUploadFilesModal(projectId, projectName);
+        });
+    });
+    
     // Add event listeners for view project page buttons
     projectsListDiv.querySelectorAll('.view-project-page-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -2478,7 +2490,7 @@ async function showProjectQuotes(projectName) {
         const quotesData = await quotesResponse.json();
         const projectQuotes = (quotesData.quotes || []).filter(q => q['project-name'] === projectName);
         
-        // Create a modal to show project quotes and upload deliverables
+        // Create a modal to show project quotes and deliverables
         const modal = document.createElement('div');
         modal.id = 'project-modal';
         modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
@@ -2491,50 +2503,6 @@ async function showProjectQuotes(projectName) {
                 </div>
                 
                 <div class="flex-grow overflow-y-auto space-y-6 pr-2">
-                    <!-- Upload Deliverable Section -->
-                    <div class="border border-yellow-300/50 p-4 rounded">
-                        <h3 class="text-xl text-yellow-300 mb-3">[ SUBIR ENTREGABLE ]</h3>
-                        <div class="space-y-3">
-                            <!-- Toggle between File and Link -->
-                            <div class="flex gap-4 mb-3">
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="upload-type-${project.id}" value="file" checked class="mr-2" onchange="toggleUploadType('${project.id}', 'file')">
-                                    <span class="text-sm">Subir Archivo</span>
-                                </label>
-                                <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="upload-type-${project.id}" value="link" class="mr-2" onchange="toggleUploadType('${project.id}', 'link')">
-                                    <span class="text-sm">Agregar Link</span>
-                                </label>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm mb-1">Título / Descripción</label>
-                                <input type="text" id="deliverable-title-${project.id}" class="form-input text-sm" placeholder="Ej: Video Final v1">
-                            </div>
-                            
-                            <!-- File Upload -->
-                            <div id="file-upload-section-${project.id}">
-                                <label class="block text-sm mb-1">Archivo</label>
-                                <input type="file" id="deliverable-file-${project.id}" class="form-input text-sm">
-                                <p class="text-xs text-gray-400 mt-1">Los archivos con el mismo nombre se versionarán automáticamente</p>
-                            </div>
-                            
-                            <!-- Link URL (hidden by default) -->
-                            <div id="link-upload-section-${project.id}" class="hidden">
-                                <label class="block text-sm mb-1">URL</label>
-                                <input type="url" id="deliverable-link-${project.id}" class="form-input text-sm" placeholder="https://wetransfer.com/... o Drive">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm mb-1">Notas (opcional)</label>
-                                <textarea id="deliverable-notes-${project.id}" class="form-textarea text-sm" rows="2" placeholder="Cambios en esta versión..."></textarea>
-                            </div>
-                            <button onclick="uploadDeliverable('${project.id}', '${projectName}')" class="nav-link submit-btn px-4 py-2 rounded text-sm w-full">
-                                [ SUBIR ]
-                            </button>
-                        </div>
-                    </div>
-                    
                     <!-- Existing Deliverables -->
                     ${(project.deliverables && project.deliverables.length > 0) ? `
                         <div class="border border-gray-500/50 p-4 rounded">
@@ -2560,7 +2528,7 @@ async function showProjectQuotes(projectName) {
                                             
                                             ${isAudio ? `
                                                 <div class="mt-2 mb-2">
-                                                    <audio controls preload="auto" class="w-full" style="height: 40px;">
+                                                    <audio controls preload="auto" class="w-full">
                                                         <source src="${fileUrl}" type="audio/mp4">
                                                         <source src="${fileUrl}" type="audio/mpeg">
                                                         <source src="${fileUrl}">
@@ -2570,7 +2538,7 @@ async function showProjectQuotes(projectName) {
                                             
                                             ${isVideo ? `
                                                 <div class="mt-2 mb-2">
-                                                    <video controls preload="auto" playsinline class="w-full rounded" style="max-height: 300px;">
+                                                    <video controls preload="metadata" playsinline class="w-full">
                                                         <source src="${fileUrl}" type="video/mp4">
                                                         <source src="${fileUrl}" type="video/webm">
                                                         <source src="${fileUrl}">
@@ -2622,6 +2590,146 @@ async function showProjectQuotes(projectName) {
     } catch (error) {
         console.error('Error loading project quotes:', error);
         alert('Error al cargar las cotizaciones del proyecto');
+    }
+}
+
+// Show Upload Files Modal
+async function showUploadFilesModal(projectId, projectName) {
+    try {
+        // Get project data
+        const projectsResponse = await fetch(`${API_BASE_URL}/api/projects`);
+        if (!projectsResponse.ok) throw new Error('Failed to fetch projects');
+        const projectsData = await projectsResponse.json();
+        const project = projectsData.projects.find(p => p.id === projectId);
+        
+        if (!project) {
+            alert('Proyecto no encontrado');
+            return;
+        }
+        
+        // Create a modal for uploading files
+        const modal = document.createElement('div');
+        modal.id = 'upload-modal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="this.closest('.fixed').remove()"></div>
+            <div class="content-box w-full max-w-2xl z-10 p-6 flex flex-col max-h-[90vh]">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl neon-shadow">++ SUBIR ENTREGABLES ++</h2>
+                    <p class="text-sm text-gray-300 mt-2">${projectName}</p>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto space-y-6 pr-2">
+                    <!-- Upload Deliverable Section -->
+                    <div class="border border-yellow-300/50 p-4 rounded">
+                        <div class="space-y-3">
+                            <!-- Toggle between File and Link -->
+                            <div class="flex gap-4 mb-3">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="upload-type-${projectId}" value="file" checked class="mr-2" onchange="toggleUploadType('${projectId}', 'file')">
+                                    <span class="text-sm">Subir Archivo</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="upload-type-${projectId}" value="link" class="mr-2" onchange="toggleUploadType('${projectId}', 'link')">
+                                    <span class="text-sm">Agregar Link</span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-1">Título / Descripción</label>
+                                <input type="text" id="deliverable-title-${projectId}" class="form-input text-sm" placeholder="Ej: Video Final v1">
+                            </div>
+                            
+                            <!-- File Upload -->
+                            <div id="file-upload-section-${projectId}">
+                                <label class="block text-sm mb-1">Archivo</label>
+                                <input type="file" id="deliverable-file-${projectId}" class="form-input text-sm">
+                                <p class="text-xs text-gray-400 mt-1">Los archivos con el mismo nombre se versionarán automáticamente</p>
+                            </div>
+                            
+                            <!-- Link URL (hidden by default) -->
+                            <div id="link-upload-section-${projectId}" class="hidden">
+                                <label class="block text-sm mb-1">URL</label>
+                                <input type="url" id="deliverable-link-${projectId}" class="form-input text-sm" placeholder="https://wetransfer.com/... o Drive">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-1">Notas (opcional)</label>
+                                <textarea id="deliverable-notes-${projectId}" class="form-textarea text-sm" rows="2" placeholder="Cambios en esta versión..."></textarea>
+                            </div>
+                            <button onclick="uploadDeliverable('${projectId}', '${projectName}')" class="nav-link submit-btn px-4 py-2 rounded text-sm w-full">
+                                [ SUBIR ]
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Existing Deliverables -->
+                    ${(project.deliverables && project.deliverables.length > 0) ? `
+                        <div class="border border-gray-500/50 p-4 rounded">
+                            <h3 class="text-xl text-gray-300 mb-3">[ ARCHIVOS SUBIDOS ]</h3>
+                            <div class="space-y-2">
+                                ${project.deliverables.map((d, idx) => {
+                                    const isAudio = d.type === 'file' && d.filename && /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(d.filename);
+                                    const isVideo = d.type === 'file' && d.filename && /\.(mp4|webm|mov|avi|mkv)$/i.test(d.filename);
+                                    const fileUrl = d.url.startsWith('/') ? '${API_BASE_URL}' + d.url : d.url;
+                                    
+                                    return `
+                                        <div class="border border-gray-600 p-3 rounded ${d.approved ? 'border-green-500/50 bg-green-900/10' : ''}">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-yellow-300 font-bold">${d.title}</p>
+                                                        ${d.approved ? '<span class="text-xs text-green-300 border border-green-300 px-2 py-0.5 rounded">✓ APROBADO</span>' : ''}
+                                                    </div>
+                                                    ${d.type === 'file' ? `<p class="text-xs text-gray-500">${d.originalName || d.filename || 'Archivo'} ${d.fileSize ? `(${(d.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</p>` : '<p class="text-xs text-gray-500">Link externo</p>'}
+                                                </div>
+                                                <button onclick="deleteDeliverable('${projectId}', ${idx})" class="text-red-400 hover:text-red-300 text-xl ml-2">×</button>
+                                            </div>
+                                            
+                                            ${isAudio ? `
+                                                <div class="mt-2 mb-2">
+                                                    <audio controls preload="auto" class="w-full">
+                                                        <source src="${fileUrl}" type="audio/mp4">
+                                                        <source src="${fileUrl}" type="audio/mpeg">
+                                                        <source src="${fileUrl}">
+                                                    </audio>
+                                                </div>
+                                            ` : ''}
+                                            
+                                            ${isVideo ? `
+                                                <div class="mt-2 mb-2">
+                                                    <video controls preload="metadata" playsinline class="w-full">
+                                                        <source src="${fileUrl}" type="video/mp4">
+                                                        <source src="${fileUrl}" type="video/webm">
+                                                        <source src="${fileUrl}">
+                                                    </video>
+                                                </div>
+                                            ` : ''}
+                                            
+                                            <a href="${fileUrl}" target="_blank" download class="text-xs text-blue-300 hover:underline break-all block mt-2">
+                                                ${d.type === 'file' ? '[ DESCARGAR ]' : '[ ABRIR LINK ]'}
+                                            </a>
+                                            ${d.notes ? `<p class="text-xs text-gray-400 mt-2">${d.notes}</p>` : ''}
+                                            ${d.addedAt ? `<p class="text-xs text-gray-500 mt-1">${new Date(d.addedAt).toLocaleDateString('es-MX')}</p>` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button onclick="this.closest('.fixed').remove()" class="nav-link submit-btn px-6 py-3 rounded-lg text-xl">
+                        [ CERRAR ]
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error loading upload modal:', error);
+        alert('Error al abrir modal de subida');
     }
 }
 
@@ -2705,8 +2813,11 @@ window.uploadDeliverable = async function(projectId, projectName) {
         
         if (result.success) {
             // Close modal and reopen to show updated data
-            document.getElementById('project-modal').remove();
-            await showProjectQuotes(projectName);
+            const existingModal = document.getElementById('upload-modal');
+            if (existingModal) {
+                existingModal.remove();
+                await showUploadFilesModal(projectId, projectName);
+            }
         } else {
             alert('Error al subir entregable: ' + (result.error || 'Error desconocido'));
         }
@@ -2750,8 +2861,16 @@ window.deleteDeliverable = async function(projectId, index) {
         
         if (result.success) {
             // Close modal and reopen to show updated data
-            document.getElementById('project-modal').remove();
-            await showProjectQuotes(project.name);
+            const uploadModal = document.getElementById('upload-modal');
+            const quotesModal = document.getElementById('project-modal');
+            
+            if (uploadModal) {
+                uploadModal.remove();
+                await showUploadFilesModal(projectId, project.name);
+            } else if (quotesModal) {
+                quotesModal.remove();
+                await showProjectQuotes(project.name);
+            }
         } else {
             alert('Error al eliminar entregable: ' + (result.error || 'Error desconocido'));
         }
