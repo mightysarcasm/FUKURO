@@ -391,76 +391,16 @@ function displayFileDetails(index) {
                         ${isDropboxVideo ? `
                             <video 
                                 id="video-${index}"
+                                controls
+                                preload="metadata"
                                 playsinline
-                                data-plyr-config='{ "controls": ["play-large", "play", "progress", "current-time", "mute", "volume", "fullscreen"] }'
+                                style="width: 100%; max-height: 500px; background: #000; display: block;"
+                                onloadedmetadata="console.log('Dropbox video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
+                                onerror="handleDropboxError(${index}, '${dropboxUrl.replace(/'/g, "\\'")}', '${work.url.replace(/'/g, "\\'")}')"
                             >
                                 <source src="${dropboxUrl}" type="video/mp4">
+                                <p class="text-red-300 p-4">Error al cargar video de Dropbox. <a href="${work.url}" target="_blank" class="underline">Abrir en Dropbox</a></p>
                             </video>
-                            <script>
-                                (function() {
-                                    console.log('=== PLYR DROPBOX DEBUG START ===');
-                                    console.log('Plyr available:', typeof Plyr);
-                                    console.log('Dropbox URL:', '${dropboxUrl}');
-                                    
-                                    setTimeout(function() {
-                                        const videoEl = document.getElementById('video-${index}');
-                                        console.log('Video element found:', !!videoEl);
-                                        
-                                        if (!videoEl) {
-                                            console.error('Video element not found!');
-                                            return;
-                                        }
-                                        
-                                        if (typeof Plyr === 'undefined') {
-                                            console.error('Plyr not loaded! Falling back to native controls');
-                                            videoEl.controls = true;
-                                            videoEl.style.display = 'block';
-                                            videoEl.style.width = '100%';
-                                            videoEl.style.maxHeight = '500px';
-                                            videoEl.style.backgroundColor = '#000';
-                                            return;
-                                        }
-                                        
-                                        try {
-                                            const player = new Plyr(videoEl, {
-                                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
-                                                autoplay: false,
-                                                clickToPlay: true,
-                                                loadSprite: true,
-                                                keyboard: { focused: true, global: true },
-                                                ratio: '16:9'
-                                            });
-                                            
-                                            console.log('Plyr instance created for Dropbox');
-                                            
-                                            player.on('ready', () => {
-                                                console.log('✅ Plyr ready for Dropbox video ${index}');
-                                            });
-                                            
-                                            player.on('loadedmetadata', () => {
-                                                console.log('✅ Dropbox video loaded:', player.duration, 'seconds');
-                                            });
-                                            
-                                            player.on('error', (event) => {
-                                                console.error('❌ Plyr error:', event);
-                                                handleDropboxError(${index}, '${dropboxUrl.replace(/'/g, "\\'")}', '${work.url.replace(/'/g, "\\'")}');
-                                            });
-                                            
-                                            // Store player globally for timestamp capture
-                                            window['plyr_video_${index}'] = player;
-                                            console.log('Dropbox player stored globally');
-                                            
-                                        } catch (e) {
-                                            console.error('❌ Failed to initialize Plyr:', e);
-                                            videoEl.controls = true;
-                                            videoEl.style.display = 'block';
-                                            videoEl.style.width = '100%';
-                                        }
-                                        
-                                        console.log('=== PLYR DROPBOX DEBUG END ===');
-                                    }, 1000);
-                                })();
-                            </script>
                             <div class="mt-2 p-3 bg-blue-500/20 border border-blue-300/30 rounded">
                                 <p class="text-xs text-blue-300 mb-1">📦 <strong>Video de Dropbox</strong></p>
                                 <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
@@ -498,83 +438,16 @@ function displayFileDetails(index) {
                         ` : `
                             <video 
                                 id="video-${index}"
+                                controls
+                                preload="metadata"
                                 playsinline
-                                data-plyr-config='{ "controls": ["play-large", "play", "progress", "current-time", "mute", "volume", "fullscreen"] }'
+                                style="width: 100%; max-height: 500px; background: #000; display: block;"
+                                onloadedmetadata="console.log('Video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
+                                onerror="handleVideoError(${index}, '${fileUrl}')"
                             >
                                 <source src="${fileUrl}" type="video/mp4">
+                                <p class="text-red-300 p-4">Tu navegador no soporta este formato de video. <a href="${fileUrl}" download class="underline">Descargar video</a></p>
                             </video>
-                            <script>
-                                (function() {
-                                    console.log('=== PLYR DEBUG START ===');
-                                    console.log('Plyr available:', typeof Plyr);
-                                    console.log('Video element ID:', 'video-${index}');
-                                    console.log('Video URL:', '${fileUrl}');
-                                    
-                                    setTimeout(function() {
-                                        const videoEl = document.getElementById('video-${index}');
-                                        console.log('Video element found:', !!videoEl);
-                                        
-                                        if (!videoEl) {
-                                            console.error('Video element not found!');
-                                            return;
-                                        }
-                                        
-                                        if (typeof Plyr === 'undefined') {
-                                            console.error('Plyr not loaded! Falling back to native controls');
-                                            videoEl.controls = true;
-                                            videoEl.style.display = 'block';
-                                            videoEl.style.width = '100%';
-                                            videoEl.style.maxHeight = '500px';
-                                            videoEl.style.backgroundColor = '#000';
-                                            return;
-                                        }
-                                        
-                                        try {
-                                            const player = new Plyr(videoEl, {
-                                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
-                                                autoplay: false,
-                                                clickToPlay: true,
-                                                loadSprite: true,
-                                                keyboard: { focused: true, global: true },
-                                                ratio: '16:9'
-                                            });
-                                            
-                                            console.log('Plyr instance created:', player);
-                                            
-                                            player.on('ready', () => {
-                                                console.log('✅ Plyr ready for video ${index}');
-                                                console.log('Player container:', player.elements.container);
-                                            });
-                                            
-                                            player.on('loadedmetadata', () => {
-                                                console.log('✅ Video loaded:', player.duration, 'seconds');
-                                                const video = player.media;
-                                                if (video) {
-                                                    console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-                                                }
-                                            });
-                                            
-                                            player.on('error', (event) => {
-                                                console.error('❌ Plyr error:', event);
-                                                console.error('Error details:', player.media.error);
-                                            });
-                                            
-                                            // Store player globally for timestamp capture
-                                            window['plyr_video_${index}'] = player;
-                                            console.log('Player stored globally as plyr_video_${index}');
-                                            
-                                        } catch (e) {
-                                            console.error('❌ Failed to initialize Plyr:', e);
-                                            // Fallback to native controls
-                                            videoEl.controls = true;
-                                            videoEl.style.display = 'block';
-                                            videoEl.style.width = '100%';
-                                        }
-                                        
-                                        console.log('=== PLYR DEBUG END ===');
-                                    }, 1000);
-                                })();
-                            </script>
                         `}
                         
                         <!-- Comment Form -->
@@ -830,43 +703,24 @@ window.addTimestamp = function(index, type, isYouTube = false) {
             }
         }
     } else {
-        // Try to get Plyr player first
-        const plyrPlayer = window[`plyr_${type}_${index}`];
-        
-        if (plyrPlayer && timestampInput) {
-            const currentTime = plyrPlayer.currentTime;
+        // Native HTML5 video/audio element
+        const media = document.getElementById(`${type}-${index}`);
+        if (media && timestampInput) {
+            const currentTime = media.currentTime;
             timestampInput.value = formatTimestamp(currentTime);
             timestampInput.dataset.seconds = currentTime;
-            console.log('Captured timestamp from Plyr:', currentTime);
-        } else {
-            // Fallback to native HTML5 element
-            const media = document.getElementById(`${type}-${index}`);
-            if (media && timestampInput) {
-                const currentTime = media.currentTime;
-                timestampInput.value = formatTimestamp(currentTime);
-                timestampInput.dataset.seconds = currentTime;
-                console.log('Captured timestamp from native:', currentTime);
-            }
+            console.log('Captured timestamp:', currentTime);
         }
     }
 }
 
 // Seek to timestamp
 window.seekTo = function(index, seconds, type) {
-    // Try Plyr player first
-    const plyrPlayer = window[`plyr_${type}_${index}`];
-    if (plyrPlayer) {
-        plyrPlayer.currentTime = seconds;
-        plyrPlayer.play();
-        console.log('Seeked to', seconds, 'using Plyr');
-        return;
-    }
-    
-    // Fallback to native element
     const media = document.getElementById(`${type}-${index}`);
     if (media) {
         media.currentTime = seconds;
         media.play();
+        console.log('Seeked to', seconds);
     }
 }
 
