@@ -3168,15 +3168,33 @@ function setupLoginSystem() {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
+        console.log('Logout button found, adding listener');
+        logoutBtn.addEventListener('click', () => {
+            console.log('Logout button clicked!');
+            logout();
+        });
+    } else {
+        console.warn('Logout button not found!');
     }
 
     if (backToMenuBtn) {
-        backToMenuBtn.addEventListener('click', () => showView('menu-view'));
+        console.log('Back to menu button found');
+        backToMenuBtn.addEventListener('click', () => {
+            console.log('Back to menu clicked');
+            showView('menu-view');
+        });
+    } else {
+        console.warn('Back to menu button not found!');
     }
 
     if (backToMenuFromQuoteBtn) {
-        backToMenuFromQuoteBtn.addEventListener('click', () => showView('menu-view'));
+        console.log('Back to menu from quote button found');
+        backToMenuFromQuoteBtn.addEventListener('click', () => {
+            console.log('Back to menu from quote clicked');
+            showView('menu-view');
+        });
+    } else {
+        console.warn('Back to menu from quote button not found!');
     }
 
     console.log('Login system setup complete');
@@ -3213,16 +3231,24 @@ function showView(viewId) {
 }
 
 function logout() {
+    console.log('Logging out...');
     currentUser = null;
     sessionStorage.removeItem('currentUser');
-    document.getElementById('backend-login-container').classList.add('hidden');
+    
+    const backendContainer = document.getElementById('backend-login-container');
+    if (backendContainer) {
+        backendContainer.classList.add('hidden');
+        console.log('Hidden backend login container');
+    }
     
     // Hide backend dashboard if open
     const backendDashboard = document.getElementById('backend-dashboard');
     if (backendDashboard) {
         backendDashboard.classList.add('hidden');
+        console.log('Hidden backend dashboard');
     }
     
+    console.log('Showing login view');
     showView('login-view');
 }
 
