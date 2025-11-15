@@ -320,22 +320,36 @@ function displayFileDetails(index) {
                         <video 
                             id="video-${index}"
                             controls
-                            preload="metadata"
+                            preload="auto"
                             playsinline
-                            style="width: 100%; max-height: 500px; background: #000; display: block;"
+                            muted
+                            style="width: 100%; max-height: 500px; min-height: 300px; background: #000; display: block; object-fit: contain;"
                             onloadstart="console.log('🔄 Video loading...', '${fileUrl}')"
-                            onloadedmetadata="console.log('✅ Video metadata loaded:', {width: this.videoWidth, height: this.videoHeight, duration: this.duration, readyState: this.readyState, networkState: this.networkState, file: '${work.filename}'})"
-                            oncanplay="console.log('✅ Video can play:', '${work.filename}')"
-                            oncanplaythrough="console.log('✅ Video can play through:', '${work.filename}')"
-                            onerror="console.error('❌ Video error:', {code: this.error ? this.error.code : 'unknown', message: this.error ? this.error.message : 'unknown', file: '${work.filename}', url: '${fileUrl}'}); handleVideoError(${index}, '${fileUrl}')"
-                            onstalled="console.warn('⚠️ Video stalled')"
-                            onsuspend="console.log('⏸️ Video suspended')"
-                            onwaiting="console.log('⏳ Video waiting for data')"
+                            onloadedmetadata="console.log('✅ Metadata loaded:', {width: this.videoWidth, height: this.videoHeight, duration: this.duration, readyState: this.readyState, networkState: this.networkState}); if(this.videoWidth === 0) console.error('❌ Video dimensions are 0x0 - codec issue!')"
+                            oncanplay="console.log('✅ Can play'); console.log('Video element:', {offsetWidth: this.offsetWidth, offsetHeight: this.offsetHeight, videoWidth: this.videoWidth, videoHeight: this.videoHeight})"
+                            oncanplaythrough="console.log('✅ Can play through')"
+                            onplay="console.log('▶️ Playing'); setTimeout(() => { const v = document.getElementById('video-${index}'); console.log('After play:', {currentTime: v.currentTime, paused: v.paused, ended: v.ended, videoWidth: v.videoWidth, videoHeight: v.videoHeight}); }, 100)"
+                            onerror="console.error('❌ Video error:', this.error); handleVideoError(${index}, '${fileUrl}')"
                         >
                             <source src="${fileUrl}" type="video/mp4">
                             <source src="${fileUrl}" type="video/webm">
                             <p class="text-red-300 p-4">Tu navegador no soporta este formato de video. <a href="${fileUrl}" download class="underline">Descargar video</a></p>
                         </video>
+                        <script>
+                            // Force a play attempt after load to trigger any hidden errors
+                            setTimeout(() => {
+                                const video = document.getElementById('video-${index}');
+                                if (video) {
+                                    console.log('🔍 Attempting force play...');
+                                    video.play().then(() => {
+                                        console.log('✅ Play successful');
+                                        video.pause();
+                                    }).catch(err => {
+                                        console.error('❌ Play failed:', err);
+                                    });
+                                }
+                            }, 1000);
+                        </script>
                         <div class="mt-2 p-2 bg-gray-900/50 rounded text-xs">
                             <p class="text-gray-400">Archivo: <span class="text-gray-300">${work.filename}</span></p>
                             <p class="text-gray-400">Tamaño: <span class="text-gray-300">${work.fileSize ? (work.fileSize / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown'}</span></p>
