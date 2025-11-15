@@ -1434,10 +1434,8 @@ function addChatMessage(message, isUser = false) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-async function parseUserInputWithGPT(userInput, history = [], apiKey) {
-    if (!apiKey || apiKey.trim() === '') {
-        throw new Error('OpenAI API Key no configurada. Por favor, configura VITE_OPENAI_API_KEY o ingresa tu API key.');
-    }
+async function parseUserInputWithGPT(userInput, history = []) {
+    // API key is handled by backend proxy, no need to check here
 
     // --- System Prompt con lógica a prueba de errores para DURACIÓN ---
     const systemPrompt = `Eres un asistente que extrae información de solicitudes de cotización para servicios de audio/video. 
@@ -1806,9 +1804,9 @@ async function handleParseInput() {
     chatStatus.innerHTML = '<p class="text-yellow-300">// Analizando tu mensaje...</p>';
     
     try {
-        console.log('Calling parseUserInputWithGPT with API key:', apiKey ? 'present' : 'missing'); // Debug
+        console.log('Calling parseUserInputWithGPT (via backend proxy)');
         // Llamar a GPT con historial de conversación
-        const parsedData = await parseUserInputWithGPT(inputText, conversationHistory, apiKey);
+        const parsedData = await parseUserInputWithGPT(inputText, conversationHistory);
         console.log('Parsed data:', parsedData); // Debug
         
         // Combinar con datos anteriores si existen
