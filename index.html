@@ -256,7 +256,7 @@
                 <div id="chat-interface" class="space-y-4 mb-6">
                     <div id="chat-messages" class="space-y-3 max-h-96 overflow-y-auto mb-4">
                         <div class="text-sm text-gray-300/70">
-                            // Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.
+                            // Escribe o graba un mensaje de voz sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -264,15 +264,29 @@
                             id="user-input" 
                             class="form-textarea text-lg flex-grow" 
                             rows="6" 
-                            placeholder="Ejemplo: Hola, soy Juan Pérez, mi email es juan@example.com. Necesito producción de audio para 3 tracks de 2 minutos cada uno en formato WAV 48kHz/24bit. El proyecto se llama 'Mi Album' y necesito entregarlo el 15 de diciembre. Es un proyecto nuevo..."
+                            placeholder="Ejemplo: Necesito producción de audio para 3 tracks de 2 minutos cada uno en formato WAV 48kHz/24bit. El proyecto se llama 'Mi Album' y necesito entregarlo el 15 de diciembre. Es un proyecto nuevo..."
                         ></textarea>
                     </div>
-                    <button 
-                        id="parse-input-btn" 
-                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl sm:text-2xl"
-                    >
-                        [ ANALIZAR Y LLENAR FORMULARIO ]
-                    </button>
+                    <div class="flex gap-2 items-center">
+                        <button 
+                            id="record-voice-btn" 
+                            class="nav-link submit-btn px-6 py-3 rounded-lg text-lg border-red-500 text-red-300 hover:bg-red-500 hover:text-black flex items-center gap-2"
+                            title="Grabar mensaje de voz"
+                        >
+                            <span id="record-icon">🎤</span>
+                            <span id="record-text">[ GRABAR VOZ ]</span>
+                        </button>
+                        <div id="recording-status" class="hidden text-red-500 text-sm flex items-center gap-2">
+                            <span class="animate-pulse">●</span>
+                            <span>Grabando...</span>
+                        </div>
+                        <button 
+                            id="parse-input-btn" 
+                            class="nav-link submit-btn flex-1 px-6 py-3 rounded-lg text-xl sm:text-2xl"
+                        >
+                            [ ANALIZAR Y LLENAR FORMULARIO ]
+                        </button>
+                    </div>
                     <div id="chat-status" class="text-center text-sm"></div>
                 </div>
                 
@@ -281,13 +295,13 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="name" class="form-label">[ NOMBRE_CLIENTE ]</label>
-                            <input type="text" id="name" name="name" class="form-input text-lg" required>
+                            <label for="name" class="form-label">[ NOMBRE_CLIENTE ] (Opcional)</label>
+                            <input type="text" id="name" name="name" class="form-input text-lg">
                             <div id="name-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
                         </div>
                         <div>
-                            <label for="email" class="form-label">[ EMAIL_CLIENTE ]</label>
-                            <input type="email" id="email" name="email" class="form-input text-lg" required>
+                            <label for="email" class="form-label">[ EMAIL_CLIENTE ] (Opcional)</label>
+                            <input type="email" id="email" name="email" class="form-input text-lg">
                             <div id="email-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
                         </div>
                     </div>
@@ -451,22 +465,6 @@
                     </div>
                 </form>
                 <div id="form-status" class="mt-4 text-center"></div>
-                
-                <!-- Button to show form after parsing -->
-                <div id="form-actions" class="hidden mt-4">
-                    <button 
-                        id="show-form-btn" 
-                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl sm:text-2xl mb-4"
-                    >
-                        [ VER Y EDITAR FORMULARIO ]
-                    </button>
-                    <button 
-                        id="regenerate-btn" 
-                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-lg border-gray-500 text-gray-300"
-                    >
-                        [ ESCRIBIR NUEVO MENSAJE ]
-                    </button>
-                </div>
 
             </div> <!-- Fin de content-area -->
 
@@ -521,7 +519,7 @@
 
             <div id="modal-controls" class="flex flex-col sm:flex-row justify-between gap-4 mt-6">
                 <button id="modify-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
-                    [ MODIFICAR ]
+                    [ NUEVA COTIZACIÓN ]
                 </button>
                 <!-- Botón de Imprimir/PNG eliminado -->
                 <button id="accept-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">

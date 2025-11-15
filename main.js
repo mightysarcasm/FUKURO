@@ -76,7 +76,11 @@ function hideModal() {
         acceptBtn.disabled = false;
         acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
     }
-    if (modifyBtn) modifyBtn.disabled = false;
+    if (modifyBtn) {
+        modifyBtn.disabled = false;
+        // Cuando se cierra el modal, volver al chat
+        resetToChat();
+    }
 }
 
 // ** CORRECCIÓN: La lógica de envío ahora está TODA dentro del click **
@@ -150,22 +154,26 @@ function validateForm() {
     currentForm.querySelectorAll('.form-error').forEach(el => el.classList.add('hidden'));
     currentForm.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
 
-    // 1. Validar Campos Básicos (Nombre, Email, Proyecto)
-    const fieldsToValidate = ['name', 'email', 'project-name', 'timeline'];
-    fieldsToValidate.forEach(id => {
+    // 1. Validar Campos Básicos (Proyecto y Timeline son requeridos, Name y Email son opcionales)
+    const requiredFields = ['project-name', 'timeline'];
+    requiredFields.forEach(id => {
         const input = document.getElementById(id);
         if (input.value.trim() === '') {
             isValid = false;
             document.getElementById(`${id}-error`).textContent = "Campo requerido.";
             document.getElementById(`${id}-error`).classList.remove('hidden');
             input.classList.add('invalid');
-        } else if (id === 'email' && !emailRegex.test(input.value)) {
-            isValid = false;
-            document.getElementById(`${id}-error`).textContent = "Formato de email inválido.";
-            document.getElementById(`${id}-error`).classList.remove('hidden');
-            input.classList.add('invalid');
         }
     });
+    
+    // Validar email solo si se proporciona (opcional pero debe tener formato válido)
+    const emailInput = document.getElementById('email');
+    if (emailInput.value.trim() !== '' && !emailRegex.test(emailInput.value)) {
+        isValid = false;
+        document.getElementById('email-error').textContent = "Formato de email inválido.";
+        document.getElementById('email-error').classList.remove('hidden');
+        emailInput.classList.add('invalid');
+    }
 
     // 4. Validar Tipo de Servicio
     const serviceAudio = document.getElementById('service-audio').checked;
@@ -341,6 +349,88 @@ function setupQuoteCalculator() {
     calculateQuote(); // Calcular al cargar
 }
 
+// Función para generar el resumen de cotización desde datos parseados
+function generateQuoteSummary(data) {
+    const summaryDiv = document.getElementById('quote-summary');
+    if (!summaryDiv) return;
+    
+    const isAudio = data.serviceType && data.serviceType.includes('Audio');
+    const isVideo = data.serviceType && data.serviceType.includes('Video');
+    const isExistingProject = data.isExistingProject || false;
+    
+    // Obtener valores del formulario (ya llenado)
+    const baseFee = parseFloat(document.getElementById('calculated_base_fee')?.value) || 0;
+    const audioFee = parseFloat(document.getElementById('calculated_audio_fee')?.value) || 0;
+    const videoFee = parseFloat(document.getElementById('calculated_video_fee')?.value) || 0;
+    const totalQuote = document.getElementById('hidden-quote')?.value || 'N/A';
+    
+    let servicesSelected = [];
+    if (isAudio) servicesSelected.push("Audio");
+    if (isVideo) servicesSelected.push("Video");
+
+    let summaryHTML = `
+        <p><strong class="text-gray-300">CLIENTE:</strong> ${data.name || 'N/A'}</p>
+        <p><strong class="text-gray-300">EMAIL:</strong> ${data.email || 'N/A'}</p>
+        <p><strong class="text-gray-300">PROYECTO:</strong> ${data.projectName || 'N/A'}</p>
+        <hr class="border-gray-500/50 my-2">
+        <p><strong class="text-gray-300">SERVICIOS:</strong> ${servicesSelected.join(' + ') || 'N/A'}</p>
+    `;
+
+    if (isAudio && data.audio) {
+        summaryHTML += `
+            <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
+                <p class="text-yellow-300 font-bold">[Detalles de Audio]</p>
+                <p><strong class="text-gray-300">Cantidad:</strong> ${data.audio.quantity || 1}</p>
+                <p><strong class="text-gray-300">Duración (c/u):</strong> ${data.audio.minutes || 0}m ${data.audio.seconds || 0}s</p>
+                <p><strong class="text-gray-300">Specs:</strong> ${data.audio.format || 'N/A'} | ${data.audio.resolution || 'N/A'}</p>
+                <p><strong class="text-gray-300">Subtotal Audio:</strong> $${audioFee.toFixed(2)} MXN</p>
+            </div>
+        `;
+    }
+
+    if (isVideo && data.video) {
+        summaryHTML += `
+            <div class="border border-dashed border-gray-500/50 p-2 rounded mt-2">
+                <p class="text-yellow-300 font-bold">[Detalles de Video]</p>
+                <p><strong class="text-gray-300">Cantidad:</strong> ${data.video.quantity || 1}</p>
+                <p><strong class="text-gray-300">Duración (c/u):</strong> ${data.video.minutes || 0}m ${data.video.seconds || 0}s</p>
+                <p><strong class="text-gray-300">Specs:</strong> ${data.video.format || 'N/A'} | ${data.video.resolution || 'N/A'}</p>
+                <p><strong class="text-gray-300">Subtotal Video:</strong> $${videoFee.toFixed(2)} MXN</p>
+            </div>
+        `;
+    }
+
+    summaryHTML += `<hr class="border-gray-500/50 my-2">`;
+    
+    if (isExistingProject) {
+         summaryHTML += `<p><strong class="text-yellow-300">TARIFA BASE (Proyecto):</strong> $0.00 MXN (Proyecto existente)</p>`;
+    } else if (isAudio || isVideo) {
+         summaryHTML += `<p><strong class="text-gray-300">TARIFA BASE (Proyecto):</strong> $${baseFee.toFixed(2)} MXN</p>`;
+         summaryHTML += `<p class="text-sm text-yellow-300/80">> (La Tarifa Base es por proyecto. Se omitirá en futuros añadidos a este proyecto.)</p>`;
+    }
+
+    summaryHTML += `<p><strong class="text-gray-300">FECHA DE ENTREGA:</strong> ${data.timeline || 'N/A'}</p>`;
+    
+    const urgencyFeeNote = document.getElementById('urgency-fee-note');
+    if (urgencyFeeNote && !urgencyFeeNote.classList.contains('hidden')) {
+        summaryHTML += `<p><strong class="text-red-500">TARIFA DE URGENCIA:</strong> ${urgencyFeeNote.textContent.split(': ')[1]}</p>`;
+    }
+
+    summaryHTML += `
+        <p class="text-yellow-300 text-xl mt-4">COTIZACIÓN TOTAL: ${totalQuote}</p>
+        <p class="text-sm text-yellow-300/80 font-bold">> Cotización aproximada. Se ajustará de acuerdo a la duración final y revisiones adicionales.</p>
+        
+        <hr class="border-gray-500/50 my-2">
+        <p><strong class="text-gray-300">BRIEF:</strong></p>
+        <p class="whitespace-pre-wrap">${data.brief || 'N/A'}</p>
+        <hr class="border-gray-500/50 my-2">
+        <p class="text-sm text-yellow-300/80">Se incluyen 3 rondas de revisión. Revisiones adicionales se cotizarán por separado.</p>
+        <p class="text-sm text-yellow-300/80 font-bold">El pago total se realiza contra-entrega de los archivos finales.</p>
+    `;
+    
+    summaryDiv.innerHTML = summaryHTML;
+}
+
 // --- Lógica de Envío de Formulario ---
 function handleGenerateQuote(event) {
     event.preventDefault();
@@ -351,8 +441,11 @@ function handleGenerateQuote(event) {
         return;
     }
 
-    // Llenar campos ocultos de Formspree
-    document.getElementById('form-replyto').value = document.getElementById('email').value;
+    // Llenar campos ocultos de Formspree (email es opcional)
+    const emailValue = document.getElementById('email').value;
+    if (emailValue) {
+        document.getElementById('form-replyto').value = emailValue;
+    }
     document.getElementById('form-subject').value = document.getElementById('project-name').value || 'Nueva Cotización FUKURO';
 
     // ** LÓGICA DE CAPTURA DE DATOS MOVIDA **
@@ -646,11 +739,11 @@ async function parseUserInputWithGPT(userInput, history = [], apiKey) {
 Analiza el texto del usuario y extrae la siguiente información en formato JSON:
 
 {
-  "name": "nombre del cliente",
-  "email": "email del cliente",
-  "projectName": "nombre del proyecto",
+  "name": "nombre del cliente (OPCIONAL)",
+  "email": "email del cliente (OPCIONAL)",
+  "projectName": "nombre del proyecto (REQUERIDO)",
   "isExistingProject": true/false,
-  "serviceType": ["Audio", "Video"] o ["Audio"] o ["Video"],
+  "serviceType": ["Audio", "Video"] o ["Audio"] o ["Video"] (REQUERIDO - al menos uno),
   "audio": {
     "quantity": número,
     "minutes": número,
@@ -665,12 +758,14 @@ Analiza el texto del usuario y extrae la siguiente información en formato JSON:
     "format": "formato de video",
     "resolution": "resolución de video"
   },
-  "timeline": "YYYY-MM-DD",
+  "timeline": "YYYY-MM-DD" (REQUERIDO),
   "brief": "descripción del proyecto",
   "assetsLink": "link de recursos si se menciona"
 }
 
-Si algún campo no está presente en el texto, usa null. Para fechas, intenta interpretar (ej: "15 de diciembre" -> "2024-12-15", "mañana" -> fecha de mañana).
+CAMPOS REQUERIDOS para generar cotización: projectName, timeline, serviceType (al menos Audio o Video).
+name y email son OPCIONALES - solo extrae si se mencionan explícitamente.
+Si algún campo no está presente en el texto, usa null. Para fechas, intenta interpretar usando el año actual. Ejemplos: "15 de diciembre" -> año actual-12-15, "25 noviembre" -> año actual-11-25, "mañana" -> fecha de mañana. SIEMPRE usa el año actual, nunca uses años pasados como 2024.
 Para serviceType, determina si menciona audio, video, o ambos.
 Si el usuario está proporcionando información adicional en una conversación, solo extrae los campos nuevos o actualizados.
 Responde SOLO con el JSON, sin explicaciones adicionales.`;
@@ -735,9 +830,26 @@ function parseDate(dateStr) {
     // Intentar parsear la fecha
     const date = new Date(dateStr);
     if (!isNaN(date.getTime())) {
-        const year = date.getFullYear();
+        // Si el año es menor a 2000, probablemente es un año mal parseado, usar año actual
+        let year = date.getFullYear();
+        const currentYear = new Date().getFullYear();
+        if (year < 2000) {
+            year = currentYear;
+        }
+        
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Si no se puede parsear, intentar con el año actual
+    // Ejemplo: "25 noviembre" -> "2025-11-25"
+    const currentYear = new Date().getFullYear();
+    const dateWithYear = new Date(`${dateStr} ${currentYear}`);
+    if (!isNaN(dateWithYear.getTime())) {
+        const year = dateWithYear.getFullYear();
+        const month = String(dateWithYear.getMonth() + 1).padStart(2, '0');
+        const day = String(dateWithYear.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
     
@@ -811,7 +923,8 @@ function fillFormFromParsedData(data) {
 
 function getMissingFields(data) {
     const missing = [];
-    const required = ['name', 'email', 'projectName', 'timeline'];
+    // Solo projectName, timeline y serviceType son requeridos para generar la cotización
+    const required = ['projectName', 'timeline'];
     
     required.forEach(field => {
         if (!data[field]) {
@@ -908,8 +1021,6 @@ async function handleParseInput() {
         
         if (missingFields.length > 0) {
             const fieldNames = {
-                'name': 'nombre',
-                'email': 'email',
                 'projectName': 'nombre del proyecto',
                 'timeline': 'fecha de entrega',
                 'serviceType': 'tipo de servicio (Audio o Video)'
@@ -923,16 +1034,20 @@ async function handleParseInput() {
             return;
         }
         
-        // Llenar formulario con datos combinados
+        // Llenar formulario con datos combinados (internamente, sin mostrar al usuario)
         fillFormFromParsedData(mergedData);
         
-        // Mostrar éxito
-        addChatMessage('Formulario llenado exitosamente. Revisa los datos y ajusta si es necesario.', false);
-        chatStatus.innerHTML = '<p class="text-green-400 neon-shadow">++ FORMULARIO LLENADO ++</p>';
+        // Calcular la cotización automáticamente
+        setupQuoteCalculator();
         
-        // Ocultar chat, mostrar acciones
+        // Generar y mostrar el resumen de la cotización directamente (sin mostrar el formulario)
+        generateQuoteSummary(mergedData);
+        
+        // Mostrar el modal de cotización (invoice)
+        showModal();
+        
+        // Ocultar chat
         if (chatInterface) chatInterface.classList.add('hidden');
-        if (formActions) formActions.classList.remove('hidden');
         
         // Limpiar historial para próxima vez
         conversationHistory = [];
@@ -947,29 +1062,20 @@ async function handleParseInput() {
     }
 }
 
-function showForm() {
-    const form = document.getElementById('quote-form');
-    const formActions = document.getElementById('form-actions');
-    form.classList.remove('hidden');
-    formActions.classList.add('hidden');
-    
-    // Scroll al formulario
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 function resetToChat() {
     const chatInterface = document.getElementById('chat-interface');
     const form = document.getElementById('quote-form');
-    const formActions = document.getElementById('form-actions');
     const chatMessages = document.getElementById('chat-messages');
     const userInput = document.getElementById('user-input');
     const parseBtn = document.getElementById('parse-input-btn');
     
+    // Cerrar modal si está abierto
+    hideModal();
+    
     // Resetear todo
     chatMessages.innerHTML = '<div class="text-sm text-gray-300/70">// Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.</div>';
     userInput.value = '';
-    form.classList.add('hidden');
-    formActions.classList.add('hidden');
+    form.classList.add('hidden'); // Form siempre oculto
     chatInterface.classList.remove('hidden');
     form.reset();
     setupQuoteCalculator();
@@ -1023,14 +1129,128 @@ if (document.readyState === 'loading') {
     setupChatInterface();
 }
 
-const showFormBtn = document.getElementById('show-form-btn');
-if (showFormBtn) {
-    showFormBtn.addEventListener('click', showForm);
+// Botón de nueva cotización está en modifyBtn, ya configurado en hideModal
+
+// --- Lógica de Grabación de Voz ---
+let recognition = null;
+let isRecording = false;
+
+function initSpeechRecognition() {
+    // Verificar si el navegador soporta Web Speech API
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'es-MX'; // Español de México
+        
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            const userInput = document.getElementById('user-input');
+            if (userInput) {
+                // Agregar el texto transcrito al textarea
+                userInput.value += (userInput.value ? ' ' : '') + transcript;
+            }
+            stopRecording();
+        };
+        
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            const chatStatus = document.getElementById('chat-status');
+            if (chatStatus) {
+                chatStatus.innerHTML = `<p class="text-red-500">Error en reconocimiento de voz: ${event.error}</p>`;
+            }
+            stopRecording();
+        };
+        
+        recognition.onend = () => {
+            stopRecording();
+        };
+    } else {
+        console.warn('Speech recognition not supported in this browser');
+        const recordBtn = document.getElementById('record-voice-btn');
+        if (recordBtn) {
+            recordBtn.disabled = true;
+            recordBtn.title = 'Reconocimiento de voz no disponible en este navegador';
+        }
+    }
 }
 
-const regenerateBtn = document.getElementById('regenerate-btn');
-if (regenerateBtn) {
-    regenerateBtn.addEventListener('click', resetToChat);
+function startRecording() {
+    if (!recognition) {
+        alert('El reconocimiento de voz no está disponible en tu navegador. Por favor, escribe tu mensaje.');
+        return;
+    }
+    
+    if (isRecording) {
+        stopRecording();
+        return;
+    }
+    
+    try {
+        recognition.start();
+        isRecording = true;
+        
+        const recordBtn = document.getElementById('record-voice-btn');
+        const recordIcon = document.getElementById('record-icon');
+        const recordText = document.getElementById('record-text');
+        const recordingStatus = document.getElementById('recording-status');
+        
+        if (recordBtn) {
+            recordBtn.classList.remove('border-red-500', 'text-red-300', 'hover:bg-red-500');
+            recordBtn.classList.add('bg-red-500', 'text-black', 'border-red-600');
+        }
+        if (recordIcon) recordIcon.textContent = '⏹️';
+        if (recordText) recordText.textContent = '[ DETENER ]';
+        if (recordingStatus) recordingStatus.classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error starting recording:', error);
+        isRecording = false;
+    }
+}
+
+function stopRecording() {
+    if (!isRecording) return;
+    
+    try {
+        if (recognition && recognition.state !== 'stopped') {
+            recognition.stop();
+        }
+    } catch (error) {
+        console.error('Error stopping recording:', error);
+    }
+    
+    isRecording = false;
+    
+    const recordBtn = document.getElementById('record-voice-btn');
+    const recordIcon = document.getElementById('record-icon');
+    const recordText = document.getElementById('record-text');
+    const recordingStatus = document.getElementById('recording-status');
+    
+    if (recordBtn) {
+        recordBtn.classList.remove('bg-red-500', 'text-black', 'border-red-600');
+        recordBtn.classList.add('border-red-500', 'text-red-300', 'hover:bg-red-500');
+    }
+    if (recordIcon) recordIcon.textContent = '🎤';
+    if (recordText) recordText.textContent = '[ GRABAR VOZ ]';
+    if (recordingStatus) recordingStatus.classList.add('hidden');
+}
+
+// Inicializar reconocimiento de voz al cargar
+initSpeechRecognition();
+
+// Configurar botón de grabación
+const recordBtn = document.getElementById('record-voice-btn');
+if (recordBtn) {
+    recordBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
 }
 
 // Permitir Enter para enviar (Shift+Enter para nueva línea)
