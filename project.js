@@ -247,91 +247,8 @@ function displayFileDetails(index) {
     let isVideo = isFile && work.filename && /\.(mp4|webm|mov|avi|mkv)$/i.test(work.filename);
     const isImage = isFile && work.filename && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(work.filename);
     
-    // Check if it's a Google Drive video link
-    let isDriveVideo = false;
-    let driveVideoId = null;
-    
-    // Check if it's a YouTube video link
-    let isYouTubeVideo = false;
-    let youtubeVideoId = null;
-    
-    // Check if it's a Dropbox video link
-    let isDropboxVideo = false;
-    let dropboxUrl = null;
-    
-    // Check if it's a Vimeo video link
-    let isVimeoVideo = false;
-    let vimeoVideoId = null;
-    
-    if (work.type === 'link' && work.url) {
-        // Match Google Drive video URLs
-        const driveMatch = work.url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (driveMatch) {
-            isDriveVideo = true;
-            driveVideoId = driveMatch[1];
-            isVideo = true; // Treat Drive videos as videos
-        }
-        
-        // Match YouTube URLs (youtube.com/watch?v=, youtu.be/, youtube.com/embed/)
-        const youtubeMatch = work.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
-        if (youtubeMatch) {
-            isYouTubeVideo = true;
-            youtubeVideoId = youtubeMatch[1];
-            isVideo = true; // Treat YouTube videos as videos
-        }
-        
-        // Match Vimeo URLs (vimeo.com/123456, player.vimeo.com/video/123456)
-        const vimeoMatch = work.url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
-        if (vimeoMatch) {
-            isVimeoVideo = true;
-            vimeoVideoId = vimeoMatch[1];
-            isVideo = true; // Treat Vimeo videos as videos
-        }
-        
-        // Match Dropbox URLs (dropbox.com or dl.dropboxusercontent.com)
-        // Convert share link to direct link for video playback
-        if (work.url.includes('dropbox.com')) {
-            const isVideoFile = /\.(mp4|mov|avi|webm|mkv)(\?|$)/i.test(work.url);
-            if (isVideoFile || work.url.includes('/s/')) {
-                isDropboxVideo = true;
-                
-                // Multiple conversion methods for different Dropbox URL formats
-                dropboxUrl = work.url;
-                
-                // Method 1: Standard share link (www.dropbox.com/s/...)
-                if (dropboxUrl.includes('www.dropbox.com/s/')) {
-                    dropboxUrl = dropboxUrl.replace('www.dropbox.com/s/', 'dl.dropboxusercontent.com/s/');
-                }
-                
-                // Method 2: Alternative share format (dropbox.com/s/...)
-                if (dropboxUrl.includes('dropbox.com/s/') && !dropboxUrl.includes('dl.dropbox')) {
-                    dropboxUrl = dropboxUrl.replace('dropbox.com/s/', 'dl.dropboxusercontent.com/s/');
-                }
-                
-                // Method 3: Scl links (dropbox.com/scl/...)
-                if (dropboxUrl.includes('/scl/')) {
-                    // Extract rlkey parameter for scl links
-                    const urlObj = new URL(dropboxUrl);
-                    const rlkey = urlObj.searchParams.get('rlkey');
-                    dropboxUrl = dropboxUrl.replace(/\?.*/, '');
-                    dropboxUrl = dropboxUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-                    dropboxUrl += '?rlkey=' + rlkey + '&raw=1';
-                } else {
-                    // Standard conversion: change dl parameter
-                    dropboxUrl = dropboxUrl.replace('dl=0', 'raw=1');
-                    dropboxUrl = dropboxUrl.replace('dl=1', 'raw=1');
-                    
-                    // If no raw parameter, add it
-                    if (!dropboxUrl.includes('raw=')) {
-                        dropboxUrl += (dropboxUrl.includes('?') ? '&' : '?') + 'raw=1';
-                    }
-                }
-                
-                console.log('Dropbox URL conversion:', work.url, '→', dropboxUrl);
-                isVideo = true;
-            }
-        }
-    }
+    // Only handle uploaded video files (no external services)
+    // Video links will be treated as regular links
     
     workList.innerHTML = `
         <!-- Back Button -->
@@ -400,116 +317,24 @@ function displayFileDetails(index) {
                 
                 ${isVideo ? `
                     <div class="my-3" id="video-container-${index}">
-                        ${isDropboxVideo ? `
-                            <video 
-                                id="video-${index}"
-                                controls
-                                preload="metadata"
-                                playsinline
-                                style="width: 100%; max-height: 500px; background: #000; display: block;"
-                                onloadedmetadata="console.log('Dropbox video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
-                                onerror="handleDropboxError(${index}, '${dropboxUrl.replace(/'/g, "\\'")}', '${work.url.replace(/'/g, "\\'")}')"
-                            >
-                                <source src="${dropboxUrl}" type="video/mp4">
-                                <p class="text-red-300 p-4">Error al cargar video de Dropbox. <a href="${work.url}" target="_blank" class="underline">Abrir en Dropbox</a></p>
-                            </video>
-                            <div class="mt-2 p-3 bg-blue-500/20 border border-blue-300/30 rounded">
-                                <p class="text-xs text-blue-300 mb-1">📦 <strong>Video de Dropbox</strong></p>
-                                <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
-                                <details class="mt-2 text-xs">
-                                    <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Debug info</summary>
-                                    <p class="text-gray-500 mt-1 break-all">Original: ${work.url}</p>
-                                    <p class="text-gray-500 mt-1 break-all">Converted: ${dropboxUrl}</p>
-                                </details>
-                            </div>
-                        ` : isYouTubeVideo ? `
-                            <iframe 
-                                id="video-${index}"
-                                src="https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1" 
-                                class="w-full bg-black rounded" 
-                                style="height: 500px; border: none;"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowfullscreen
-                            ></iframe>
-                            <div class="mt-2 p-3 bg-red-900/20 border border-red-300/30 rounded">
-                                <p class="text-xs text-red-300 mb-1">📺 <strong>Video de YouTube</strong></p>
-                                <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
-                            </div>
-                        ` : isVimeoVideo ? `
-                            <iframe 
-                                id="video-${index}"
-                                src="https://player.vimeo.com/video/${vimeoVideoId}" 
-                                class="w-full bg-black rounded" 
-                                style="height: 500px; border: none;"
-                                frameborder="0"
-                                allow="autoplay; fullscreen; picture-in-picture"
-                                allowfullscreen
-                            ></iframe>
-                            <script src="https://player.vimeo.com/api/player.js"></script>
-                            <script>
-                                (function() {
-                                    setTimeout(function() {
-                                        const iframe = document.getElementById('video-${index}');
-                                        const player = new Vimeo.Player(iframe);
-                                        
-                                        // Store player globally for timestamp capture
-                                        window['vimeo_player_${index}'] = player;
-                                        
-                                        player.ready().then(function() {
-                                            console.log('Vimeo player ready for video ${index}');
-                                        });
-                                    }, 500);
-                                })();
-                            </script>
-                            <div class="mt-2 p-3 bg-purple-900/20 border border-purple-300/30 rounded">
-                                <p class="text-xs text-purple-300 mb-1">📹 <strong>Video de Vimeo</strong></p>
-                                <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
-                            </div>
-                        ` : isDriveVideo ? `
-                            <video 
-                                id="video-${index}"
-                                controls
-                                preload="metadata"
-                                playsinline
-                                style="width: 100%; max-height: 500px; background: #000; display: block;"
-                                onloadedmetadata="console.log('✅ Drive video loaded via proxy:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
-                                onloadstart="console.log('🔄 Drive video loading from:', '${API_BASE_URL}/api/drive-stream/${driveVideoId}')"
-                                onerror="console.error('❌ Drive video error:', this.error); handleDriveStreamError(${index}, '${driveVideoId}')"
-                            >
-                                <source src="${API_BASE_URL}/api/drive-stream/${driveVideoId}" type="video/mp4">
-                                <p class="text-red-300 p-4">Error al cargar video de Drive. <a href="${work.url}" target="_blank" class="underline">Abrir en Drive</a></p>
-                            </video>
-                            <script>
-                                // Debug: Test if backend is reachable
-                                fetch('${API_BASE_URL}/api/drive-stream/${driveVideoId}', { method: 'HEAD' })
-                                    .then(res => console.log('✅ Drive stream endpoint reachable:', res.status, res.headers.get('content-type')))
-                                    .catch(err => console.error('❌ Drive stream endpoint unreachable:', err));
-                            </script>
-                            <div class="mt-2 p-3 bg-blue-900/20 border border-blue-300/30 rounded">
-                                <p class="text-xs text-blue-300 mb-2">📹 <strong>Video de Google Drive (Streaming)</strong></p>
-                                <p class="text-xs text-gray-300">✅ Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
-                                <p class="text-xs text-gray-400 mt-2">⚠️ <strong>Nota sobre compatibilidad:</strong> Los videos de Drive pueden tener el mismo problema de codec que los videos subidos. Si ves pantalla negra en Edge/Chrome pero funciona en Safari, el video necesita re-codificación (ver <a href="/VIDEO_ENCODING_GUIDE.md" target="_blank" class="underline text-blue-300">guía de codificación</a>).</p>
-                                <p class="text-xs text-gray-500 mt-1">El archivo debe tener permisos de "Cualquiera con el enlace puede ver"</p>
-                            </div>
-                        ` : `
-                            <video 
-                                id="video-${index}"
-                                controls
-                                preload="metadata"
-                                playsinline
-                                style="width: 100%; max-height: 500px; background: #000; display: block;"
-                                onloadedmetadata="console.log('Video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
-                                onerror="handleVideoError(${index}, '${fileUrl}')"
-                            >
-                                <source src="${fileUrl}" type="video/mp4">
-                                <p class="text-red-300 p-4">Tu navegador no soporta este formato de video. <a href="${fileUrl}" download class="underline">Descargar video</a></p>
-                            </video>
-                        `}
+                        <video 
+                            id="video-${index}"
+                            controls
+                            preload="metadata"
+                            playsinline
+                            style="width: 100%; max-height: 500px; background: #000; display: block;"
+                            onloadedmetadata="console.log('✅ Video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration, 'Format:', '${work.filename}')"
+                            onerror="handleVideoError(${index}, '${fileUrl}')"
+                        >
+                            <source src="${fileUrl}" type="video/mp4">
+                            <source src="${fileUrl}" type="video/webm">
+                            <p class="text-red-300 p-4">Tu navegador no soporta este formato de video. <a href="${fileUrl}" download class="underline">Descargar video</a></p>
+                        </video>
                         
                         <!-- Comment Form -->
                         <div class="mt-3 p-3 border border-gray-600 rounded">
                             <div class="flex gap-2 mb-2">
-                                <button onclick="addTimestamp(${index}, 'video', ${isYouTubeVideo}, ${isVimeoVideo})" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
+                                <button onclick="addTimestamp(${index}, 'video')" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
                                     [ TIMESTAMP ACTUAL ]
                                 </button>
                                 <input 
@@ -520,9 +345,6 @@ function displayFileDetails(index) {
                                     readonly
                                 >
                             </div>
-                            ${isDropboxVideo ? '<p class="text-xs text-gray-400 mb-2">Timestamps automáticos desde Dropbox</p>' : ''}
-                            ${isVimeoVideo ? '<p class="text-xs text-purple-300 mb-2">Timestamps automáticos desde Vimeo</p>' : ''}
-                            ${isDriveVideo ? '<p class="text-xs text-blue-300 mb-2">Timestamps automáticos desde Google Drive</p>' : ''}
                             <textarea id="comment-${index}" class="form-textarea text-sm w-full" rows="2" placeholder="Escribe tu comentario..."></textarea>
                             <button onclick="saveComment(${index}, '${work.title}', 'video')" class="nav-link submit-btn px-3 py-1 rounded text-xs mt-2 w-full">
                                 [ GUARDAR COMENTARIO ]
@@ -708,101 +530,29 @@ window.onYouTubeIframeAPIReady = function() {
 }
 
 // Add current timestamp to input
-window.addTimestamp = function(index, type, isYouTube = false, isVimeo = false) {
+window.addTimestamp = function(index, type) {
     const timestampInput = document.getElementById(`timestamp-${index}`);
+    const media = document.getElementById(`${type}-${index}`);
     
-    if (isVimeo) {
-        // Handle Vimeo iframe
-        const vimeoPlayer = window[`vimeo_player_${index}`];
-        if (vimeoPlayer) {
-            vimeoPlayer.getCurrentTime().then(function(seconds) {
-                if (timestampInput) {
-                    timestampInput.value = formatTimestamp(seconds);
-                    timestampInput.dataset.seconds = seconds;
-                    console.log('Captured timestamp from Vimeo:', seconds);
-                }
-            }).catch(function(error) {
-                console.error('Error getting Vimeo time:', error);
-                alert('No se pudo obtener el tiempo actual del video de Vimeo.');
-            });
-        } else {
-            alert('El reproductor de Vimeo aún no está listo. Espera un momento e intenta de nuevo.');
-        }
-    } else if (isYouTube) {
-        // Handle YouTube iframe
-        if (!youtubePlayers[index]) {
-            // Initialize YouTube player
-            loadYouTubeAPI();
-            
-            setTimeout(() => {
-                if (window.YT && window.YT.Player) {
-                    youtubePlayers[index] = new YT.Player(`${type}-${index}`, {
-                        events: {
-                            'onReady': () => {
-                                const currentTime = youtubePlayers[index].getCurrentTime();
-                                if (timestampInput) {
-                                    timestampInput.value = formatTimestamp(currentTime);
-                                    timestampInput.dataset.seconds = currentTime;
-                                }
-                            }
-                        }
-                    });
-                } else {
-                    alert('Espera un momento y vuelve a intentar (cargando YouTube API)');
-                }
-            }, 1000);
-        } else {
-            // Player already exists, get current time
-            try {
-                const currentTime = youtubePlayers[index].getCurrentTime();
-                if (timestampInput) {
-                    timestampInput.value = formatTimestamp(currentTime);
-                    timestampInput.dataset.seconds = currentTime;
-                }
-            } catch (e) {
-                alert('No se pudo obtener el tiempo actual. Asegúrate de que el video esté cargado.');
-            }
-        }
+    if (media && timestampInput) {
+        const currentTime = media.currentTime;
+        timestampInput.value = formatTimestamp(currentTime);
+        timestampInput.dataset.seconds = currentTime;
+        console.log('✅ Captured timestamp:', currentTime, 'seconds');
     } else {
-        // Native HTML5 video/audio element
-        const media = document.getElementById(`${type}-${index}`);
-        if (media && timestampInput) {
-            const currentTime = media.currentTime;
-            timestampInput.value = formatTimestamp(currentTime);
-            timestampInput.dataset.seconds = currentTime;
-            console.log('Captured timestamp:', currentTime);
-        }
+        console.error('❌ Could not find media element or timestamp input');
     }
 }
 
 // Seek to timestamp
 window.seekTo = function(index, seconds, type) {
-    // Try Vimeo player first
-    const vimeoPlayer = window[`vimeo_player_${index}`];
-    if (vimeoPlayer) {
-        vimeoPlayer.setCurrentTime(seconds).then(function() {
-            vimeoPlayer.play();
-            console.log('Seeked Vimeo to', seconds);
-        }).catch(function(error) {
-            console.error('Error seeking Vimeo:', error);
-        });
-        return;
-    }
-    
-    // Try YouTube player
-    if (youtubePlayers[index]) {
-        youtubePlayers[index].seekTo(seconds, true);
-        youtubePlayers[index].playVideo();
-        console.log('Seeked YouTube to', seconds);
-        return;
-    }
-    
-    // Fallback to native HTML5 element
     const media = document.getElementById(`${type}-${index}`);
     if (media) {
         media.currentTime = seconds;
         media.play();
-        console.log('Seeked to', seconds);
+        console.log('✅ Seeked to', seconds, 'seconds');
+    } else {
+        console.error('❌ Could not find media element');
     }
 }
 
