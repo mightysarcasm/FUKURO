@@ -3054,15 +3054,176 @@ function setupDatePickerModal() {
     }
 }
 
+// ============================================
+// LOGIN SYSTEM
+// ============================================
+
+const USERS = {
+    admin: { password: 'admin', role: 'admin' },
+    penthouse: { password: 'penthouse', role: 'client' }
+};
+
+let currentUser = null;
+
+function setupLoginSystem() {
+    // Check if already logged in
+    const savedUser = sessionStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showViewForUser(currentUser);
+        return;
+    }
+
+    // Show login view by default
+    showView('login-view');
+    
+    // Setup login form
+    const loginBtn = document.getElementById('login-submit-btn');
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    const loginError = document.getElementById('login-error');
+
+    // Handle Enter key
+    const handleEnter = (e) => {
+        if (e.key === 'Enter') {
+            loginBtn.click();
+        }
+    };
+    usernameInput.addEventListener('keydown', handleEnter);
+    passwordInput.addEventListener('keydown', handleEnter);
+
+    loginBtn.addEventListener('click', () => {
+        const username = usernameInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
+            loginError.textContent = 'Por favor ingresa usuario y contraseña';
+            loginError.classList.remove('hidden');
+            return;
+        }
+
+        const user = USERS[username];
+        if (!user || user.password !== password) {
+            loginError.textContent = 'Usuario o contraseña incorrectos';
+            loginError.classList.remove('hidden');
+            return;
+        }
+
+        // Successful login
+        currentUser = { username, role: user.role };
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        loginError.classList.add('hidden');
+        usernameInput.value = '';
+        passwordInput.value = '';
+
+        showViewForUser(currentUser);
+    });
+
+    // Setup menu buttons
+    document.getElementById('menu-proyectos-btn').addEventListener('click', () => {
+        showView('projects-dashboard-view');
+        loadUserProjects();
+    });
+
+    document.getElementById('menu-cotizar-btn').addEventListener('click', () => {
+        showView('quote-view');
+        document.getElementById('back-to-menu-from-quote-btn').classList.remove('hidden');
+    });
+
+    document.getElementById('menu-logout-btn').addEventListener('click', logout);
+    document.getElementById('back-to-menu-btn').addEventListener('click', () => showView('menu-view'));
+    document.getElementById('back-to-menu-from-quote-btn').addEventListener('click', () => showView('menu-view'));
+}
+
+function showViewForUser(user) {
+    if (user.role === 'admin') {
+        // Admin goes directly to quote view and sees backend button
+        document.getElementById('backend-login-container').classList.remove('hidden');
+        showView('quote-view');
+    } else if (user.role === 'client') {
+        // Client (penthouse) sees the menu
+        showView('menu-view');
+    }
+}
+
+function showView(viewId) {
+    const views = ['login-view', 'menu-view', 'projects-dashboard-view', 'quote-view'];
+    views.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            if (id === viewId) {
+                element.classList.remove('hidden');
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+    });
+}
+
+function logout() {
+    currentUser = null;
+    sessionStorage.removeItem('currentUser');
+    document.getElementById('backend-login-container').classList.add('hidden');
+    
+    // Hide backend dashboard if open
+    const backendDashboard = document.getElementById('backend-dashboard');
+    if (backendDashboard) {
+        backendDashboard.classList.add('hidden');
+    }
+    
+    showView('login-view');
+}
+
+async function loadUserProjects() {
+    const projectsList = document.getElementById('user-projects-list');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/projects`);
+        const result = await response.json();
+        
+        if (result.success && result.projects) {
+            // Filter projects for the current user (penthouse)
+            const userProjects = result.projects.filter(p => 
+                p.name.toLowerCase().includes('penthouse') || 
+                p.name.toLowerCase().includes('tenampa')
+            );
+            
+            if (userProjects.length === 0) {
+                projectsList.innerHTML = '<p class="text-gray-400 text-center">No tienes proyectos activos</p>';
+                return;
+            }
+            
+            projectsList.innerHTML = userProjects.map(project => `
+                <div class="border border-gray-600 rounded p-4 hover:border-yellow-300 transition-colors cursor-pointer" onclick="window.location.href='project.html?id=${project.id}'">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-xl text-yellow-300 font-bold">${project.name}</h3>
+                            <p class="text-sm text-gray-400 mt-1">${(project.deliverables || []).length} entregable(s)</p>
+                            <p class="text-xs text-gray-500 mt-1">${new Date(project.createdAt).toLocaleDateString('es-MX')}</p>
+                        </div>
+                        <span class="text-gray-400 text-2xl">›</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading user projects:', error);
+        projectsList.innerHTML = '<p class="text-red-500 text-center">Error al cargar proyectos</p>';
+    }
+}
+
 // Initialize project selection when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        setupLoginSystem();
         setupProjectSelection();
         loadProjects();
         setupBackendLogin();
         setupDatePickerModal();
     });
 } else {
+    setupLoginSystem();
     setupProjectSelection();
     loadProjects();
     setupBackendLogin();

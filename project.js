@@ -213,6 +213,8 @@ function displayWork() {
             fileIcon = isVideoLink ? '🎬' : '🔗';
         }
         
+        const version = work.version || 1;
+        
         return `
             <div class="border border-gray-600 rounded p-4 file-item cursor-pointer hover:border-yellow-300 transition-colors" onclick="openFile(${index})">
                 <div class="flex items-start justify-between">
@@ -220,8 +222,11 @@ function displayWork() {
                         <div class="flex items-center gap-3 mb-2">
                             <span class="text-2xl">${fileIcon}</span>
                             <div>
-                                <p class="text-yellow-300 font-bold">${work.title}</p>
-                                ${work.approved ? '<span class="text-xs text-green-300 border border-green-300 px-2 py-0.5 rounded mt-1 inline-block">✓ APROBADO</span>' : '<span class="text-xs text-gray-400 border border-gray-600 px-2 py-0.5 rounded mt-1 inline-block">POR APROBAR</span>'}
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-yellow-300 font-bold">${work.title}</p>
+                                    <span class="text-xs text-gray-400 border border-gray-600 px-2 py-0.5 rounded">v${version}</span>
+                                    ${work.approved ? '<span class="text-xs text-green-300 border border-green-300 px-2 py-0.5 rounded">✓ APROBADO</span>' : '<span class="text-xs text-gray-400 border border-gray-600 px-2 py-0.5 rounded">POR APROBAR</span>'}
+                                </div>
                             </div>
                         </div>
                         ${work.notes ? `<p class="text-sm text-gray-400 ml-11">${work.notes}</p>` : ''}

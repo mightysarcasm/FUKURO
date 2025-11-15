@@ -327,8 +327,8 @@
                 </p>
             </header>
             
-            <!-- Backend Login Button -->
-            <div class="text-right mb-4">
+            <!-- Backend Login Button (only visible for admin) -->
+            <div id="backend-login-container" class="text-right mb-4 hidden">
                 <button 
                     id="backend-login-btn" 
                     class="nav-link submit-btn px-4 py-2 rounded-lg text-sm sm:text-base cursor-pointer"
@@ -341,69 +341,123 @@
             <!-- Área de Contenido (Directo al Formulario) -->
             <div id="content-area" class="content-box-inner flex-grow overflow-y-auto p-4 border border-dashed border-gray-500/50 rounded-lg">
                 
-                <!-- TÍTULO CAMBIADO AQUÍ -->
-                <h2 class="text-2xl md:text-3xl neon-shadow mb-4">++ LET'S SYNTHESIZE ++</h2>
-                
-                <!-- Project Selection -->
-                <div id="project-selection" class="mb-6 space-y-4">
-                    <div>
-                        <label class="form-label">[ SELECCIONAR PROYECTO ]</label>
-                        <div class="flex gap-4 items-center">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="project-type" value="new" id="project-type-new" checked class="form-radio">
-                                <span>Nuevo Proyecto</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="project-type" value="existing" id="project-type-existing" class="form-radio">
-                                <span>Proyecto Existente</span>
-                            </label>
+                <!-- Login View -->
+                <div id="login-view" class="flex flex-col items-center justify-center h-full">
+                    <h2 class="text-3xl md:text-4xl neon-shadow mb-8">++ LOGIN ++</h2>
+                    <div class="w-full max-w-md space-y-4">
+                        <div>
+                            <label class="form-label">[ USUARIO ]</label>
+                            <input type="text" id="login-username" class="form-input text-lg w-full" placeholder="Usuario">
                         </div>
-                    </div>
-                    <div id="existing-project-select" class="hidden">
-                        <label for="existing-project-name" class="form-label">[ PROYECTO ]</label>
-                        <select id="existing-project-name" class="form-select text-lg">
-                            <option value="">Cargando proyectos...</option>
-                        </select>
+                        <div>
+                            <label class="form-label">[ CONTRASEÑA ]</label>
+                            <input type="password" id="login-password" class="form-input text-lg w-full" placeholder="Contraseña">
+                        </div>
+                        <button id="login-submit-btn" class="nav-link submit-btn px-6 py-3 rounded-lg text-xl w-full">
+                            [ ENTRAR ]
+                        </button>
+                        <div id="login-error" class="text-red-500 text-center text-sm hidden"></div>
                     </div>
                 </div>
-                
-                <!-- Chat Interface for Free Text Input -->
-                <div id="chat-interface" class="space-y-4 mb-6">
-                    <div id="chat-messages" class="space-y-3 max-h-96 overflow-y-auto mb-4">
-                        <div class="text-sm text-gray-300/70">
-                            // Escribe o graba un mensaje de voz sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <textarea 
-                            id="user-input" 
-                            class="form-textarea text-lg flex-grow" 
-                            rows="6" 
-                            placeholder="Ejemplo: Necesito producción de audio para 3 tracks de 2 minutos cada uno en formato WAV 48kHz/24bit. El proyecto se llama 'Mi Album' y necesito entregarlo el 15 de diciembre. Es un proyecto nuevo..."
-                        ></textarea>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <button 
-                            id="record-voice-btn" 
-                            class="nav-link submit-btn px-6 py-3 rounded-lg text-xl sm:text-2xl flex items-center gap-2"
-                            title="Grabar mensaje de voz"
-                        >
-                            <span id="record-text">[ GRABAR VOZ ]</span>
+
+                <!-- Menu View (for penthouse user) -->
+                <div id="menu-view" class="hidden flex flex-col items-center justify-center h-full">
+                    <h2 class="text-3xl md:text-4xl neon-shadow mb-8">++ MENÚ ++</h2>
+                    <div class="w-full max-w-md space-y-4">
+                        <button id="menu-proyectos-btn" class="nav-link submit-btn px-8 py-6 rounded-lg text-2xl w-full">
+                            [ PROYECTOS ]
                         </button>
-                        <div id="recording-status" class="hidden text-red-500 text-sm flex items-center gap-2">
-                            <span class="animate-pulse">●</span>
-                            <span>Grabando...</span>
-                        </div>
-                        <button 
-                            id="parse-input-btn" 
-                            class="nav-link submit-btn flex-1 px-6 py-3 rounded-lg text-xl sm:text-2xl"
-                        >
-                            [ SEND ]
+                        <button id="menu-cotizar-btn" class="nav-link submit-btn px-8 py-6 rounded-lg text-2xl w-full">
+                            [ COTIZAR ]
+                        </button>
+                        <button id="menu-logout-btn" class="nav-link submit-btn px-4 py-2 rounded-lg text-lg w-full bg-red-500/20 border-red-300 text-red-300">
+                            [ CERRAR SESIÓN ]
                         </button>
                     </div>
-                    <div id="chat-status" class="text-center text-sm"></div>
                 </div>
-                
+
+                <!-- Projects Dashboard View (for penthouse user) -->
+                <div id="projects-dashboard-view" class="hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl md:text-3xl neon-shadow">++ MIS PROYECTOS ++</h2>
+                        <button id="back-to-menu-btn" class="nav-link submit-btn px-4 py-2 rounded-lg text-sm">
+                            [ ← VOLVER ]
+                        </button>
+                    </div>
+                    <div id="user-projects-list" class="space-y-4">
+                        <!-- Projects will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Quote/Chat View -->
+                <div id="quote-view" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl md:text-3xl neon-shadow">++ LET'S SYNTHESIZE ++</h2>
+                        <button id="back-to-menu-from-quote-btn" class="nav-link submit-btn px-4 py-2 rounded-lg text-sm hidden">
+                            [ ← VOLVER ]
+                        </button>
+                    </div>
+                    
+                    <!-- Project Selection -->
+                    <div id="project-selection" class="mb-6 space-y-4">
+                        <div>
+                            <label class="form-label">[ SELECCIONAR PROYECTO ]</label>
+                            <div class="flex gap-4 items-center">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="project-type" value="new" id="project-type-new" checked class="form-radio">
+                                    <span>Nuevo Proyecto</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="project-type" value="existing" id="project-type-existing" class="form-radio">
+                                    <span>Proyecto Existente</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="existing-project-select" class="hidden">
+                            <label for="existing-project-name" class="form-label">[ PROYECTO ]</label>
+                            <select id="existing-project-name" class="form-select text-lg">
+                                <option value="">Cargando proyectos...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Interface for Free Text Input -->
+                    <div id="chat-interface" class="space-y-4 mb-6">
+                        <div id="chat-messages" class="space-y-3 max-h-96 overflow-y-auto mb-4">
+                            <div class="text-sm text-gray-300/70">
+                                // Escribe o graba un mensaje de voz sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <textarea 
+                                id="user-input" 
+                                class="form-textarea text-lg flex-grow" 
+                                rows="6" 
+                                placeholder="Ejemplo: Necesito producción de audio para 3 tracks de 2 minutos cada uno en formato WAV 48kHz/24bit. El proyecto se llama 'Mi Album' y necesito entregarlo el 15 de diciembre. Es un proyecto nuevo..."
+                            ></textarea>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <button 
+                                id="record-voice-btn" 
+                                class="nav-link submit-btn px-6 py-3 rounded-lg text-xl sm:text-2xl flex items-center gap-2"
+                                title="Grabar mensaje de voz"
+                            >
+                                <span id="record-text">[ GRABAR VOZ ]</span>
+                            </button>
+                            <div id="recording-status" class="hidden text-red-500 text-sm flex items-center gap-2">
+                                <span class="animate-pulse">●</span>
+                                <span>Grabando...</span>
+                            </div>
+                            <button 
+                                id="parse-input-btn" 
+                                class="nav-link submit-btn flex-1 px-6 py-3 rounded-lg text-xl sm:text-2xl"
+                            >
+                                [ SEND ]
+                            </button>
+                        </div>
+                        <div id="chat-status" class="text-center text-sm"></div>
+                    </div>
+                </div>
 
             </div> <!-- Fin de content-area -->
 
