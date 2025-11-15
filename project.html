@@ -213,6 +213,12 @@
             min-height: 300px !important;
             background-color: #000 !important;
             display: block !important;
+            /* Force GPU rendering for Edge/Chrome compatibility */
+            transform: translateZ(0) !important;
+            -webkit-transform: translateZ(0) !important;
+            will-change: transform !important;
+            backface-visibility: hidden !important;
+            -webkit-backface-visibility: hidden !important;
         }
         
         video::-webkit-media-controls-panel {

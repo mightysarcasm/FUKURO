@@ -323,7 +323,7 @@ function displayFileDetails(index) {
                             preload="auto"
                             playsinline
                             muted
-                            style="width: 100%; height: auto; max-height: 500px; min-height: 300px; background: #000; display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1;"
+                            style="width: 100%; height: auto; max-height: 500px; min-height: 300px; background: #000; display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1; transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"
                             onloadstart="console.log('🔄 Video loading...', '${fileUrl}')"
                             onloadedmetadata="console.log('✅ Metadata loaded:', {width: this.videoWidth, height: this.videoHeight, duration: this.duration, readyState: this.readyState, networkState: this.networkState}); if(this.videoWidth === 0) console.error('❌ Video dimensions are 0x0 - codec issue!')"
                             oncanplay="console.log('✅ Can play'); console.log('Video element:', {offsetWidth: this.offsetWidth, offsetHeight: this.offsetHeight, videoWidth: this.videoWidth, videoHeight: this.videoHeight})"
