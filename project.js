@@ -255,8 +255,18 @@ function displayFileDetails(index) {
     let isVideo = isFile && work.filename && /\.(mp4|webm|mov|avi|mkv)$/i.test(work.filename);
     const isImage = isFile && work.filename && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(work.filename);
     
-    // Only handle uploaded video files (no external services)
-    // Video links will be treated as regular links
+    // Check for Dropbox video links
+    const isDropboxVideo = !isFile && work.url && work.url.includes('dropbox.com') && /\.(mp4|mov|avi|webm|mkv)(\?|$)/i.test(work.url);
+    
+    // Convert Dropbox share link to direct download link for embedding
+    if (isDropboxVideo) {
+        isVideo = true;
+        // Convert www.dropbox.com to dl.dropboxusercontent.com and add raw=1
+        fileUrl = work.url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('dl=0', 'raw=1');
+        if (!fileUrl.includes('raw=1')) {
+            fileUrl += (fileUrl.includes('?') ? '&' : '?') + 'raw=1';
+        }
+    }
     
     workList.innerHTML = `
         <!-- Back Button -->
