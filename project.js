@@ -323,13 +323,23 @@ function displayFileDetails(index) {
                             preload="metadata"
                             playsinline
                             style="width: 100%; max-height: 500px; background: #000; display: block;"
-                            onloadedmetadata="console.log('✅ Video loaded:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration, 'Format:', '${work.filename}')"
-                            onerror="handleVideoError(${index}, '${fileUrl}')"
+                            onloadstart="console.log('🔄 Video loading...', '${fileUrl}')"
+                            onloadedmetadata="console.log('✅ Video metadata loaded:', {width: this.videoWidth, height: this.videoHeight, duration: this.duration, readyState: this.readyState, networkState: this.networkState, file: '${work.filename}'})"
+                            oncanplay="console.log('✅ Video can play:', '${work.filename}')"
+                            oncanplaythrough="console.log('✅ Video can play through:', '${work.filename}')"
+                            onerror="console.error('❌ Video error:', {code: this.error ? this.error.code : 'unknown', message: this.error ? this.error.message : 'unknown', file: '${work.filename}', url: '${fileUrl}'}); handleVideoError(${index}, '${fileUrl}')"
+                            onstalled="console.warn('⚠️ Video stalled')"
+                            onsuspend="console.log('⏸️ Video suspended')"
+                            onwaiting="console.log('⏳ Video waiting for data')"
                         >
                             <source src="${fileUrl}" type="video/mp4">
                             <source src="${fileUrl}" type="video/webm">
                             <p class="text-red-300 p-4">Tu navegador no soporta este formato de video. <a href="${fileUrl}" download class="underline">Descargar video</a></p>
                         </video>
+                        <div class="mt-2 p-2 bg-gray-900/50 rounded text-xs">
+                            <p class="text-gray-400">Archivo: <span class="text-gray-300">${work.filename}</span></p>
+                            <p class="text-gray-400">Tamaño: <span class="text-gray-300">${work.fileSize ? (work.fileSize / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown'}</span></p>
+                        </div>
                         
                         <!-- Comment Form -->
                         <div class="mt-3 p-3 border border-gray-600 rounded">
