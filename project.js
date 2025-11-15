@@ -488,7 +488,8 @@ function displayFileDetails(index) {
                             <div class="mt-2 p-3 bg-blue-900/20 border border-blue-300/30 rounded">
                                 <p class="text-xs text-blue-300 mb-2">📹 <strong>Video de Google Drive (Streaming)</strong></p>
                                 <p class="text-xs text-gray-300">✅ Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
-                                <p class="text-xs text-gray-400 mt-1">Nota: El archivo debe tener permisos de "Cualquiera con el enlace puede ver"</p>
+                                <p class="text-xs text-gray-400 mt-2">⚠️ <strong>Nota sobre compatibilidad:</strong> Los videos de Drive pueden tener el mismo problema de codec que los videos subidos. Si ves pantalla negra en Edge/Chrome pero funciona en Safari, el video necesita re-codificación (ver <a href="/VIDEO_ENCODING_GUIDE.md" target="_blank" class="underline text-blue-300">guía de codificación</a>).</p>
+                                <p class="text-xs text-gray-500 mt-1">El archivo debe tener permisos de "Cualquiera con el enlace puede ver"</p>
                             </div>
                         ` : `
                             <video 
@@ -1113,11 +1114,18 @@ window.handleDriveStreamError = function(index, driveVideoId) {
     const errorCode = video.error ? video.error.code : 'unknown';
     const driveUrl = `https://drive.google.com/file/d/${driveVideoId}/view`;
     
+    // Detect browser
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isEdge = /Edg/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    const browserName = isEdge ? 'Edge' : isChrome ? 'Chrome' : isSafari ? 'Safari' : 'este navegador';
+    
     container.innerHTML = `
         <div class="p-6 bg-red-900/20 border border-red-500/50 rounded">
             <p class="text-red-300 text-lg mb-2">⚠️ Error al cargar video de Google Drive</p>
             <p class="text-gray-300 text-sm mb-4">El video no se pudo transmitir desde Drive. Posibles causas:</p>
             <ul class="text-gray-400 text-sm mb-4 list-disc list-inside space-y-1">
+                <li><strong>Codec incompatible:</strong> El video tiene un codec que ${browserName} no puede reproducir (H.264 High Profile, HEVC, etc.)</li>
                 <li><strong>Permisos:</strong> El archivo debe tener "Cualquiera con el enlace puede ver"</li>
                 <li><strong>Tipo de archivo:</strong> Verifica que sea un formato de video compatible (MP4, WebM)</li>
                 <li><strong>Cuota de Drive:</strong> El archivo puede haber excedido el límite de descargas diarias</li>
