@@ -6,6 +6,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { google } from 'googleapis';
+import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+// Load environment variables
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +24,50 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname)); // Serve static files
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Access token required' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ success: false, error: 'Invalid or expired token' });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+// Admin-only middleware
+const requireAdmin = (req, res, next) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    next();
+};
+
+// User credentials
+const USERS = {
+    admin: {
+        username: 'admin',
+        passwordHash: process.env.ADMIN_PASSWORD_HASH,
+        role: 'admin'
+    },
+    penthouse: {
+        username: 'penthouse',
+        passwordHash: process.env.PENTHOUSE_PASSWORD_HASH,
+        role: 'client'
+    }
+};
 
 // Data file path
 const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
@@ -166,7 +216,67 @@ function writeQuotes(quotes) {
     }
 }
 
-// API Routes
+// ============================================
+// AUTHENTICATION ROUTES
+// ============================================
+
+// POST /api/auth/login - User login
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ success: false, error: 'Username and password required' });
+        }
+
+        const user = USERS[username.toLowerCase()];
+        
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
+
+        // Compare password with hash
+        const validPassword = await bcrypt.compare(password, user.passwordHash);
+        
+        if (!validPassword) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
+
+        // Create JWT token
+        const token = jwt.sign(
+            { username: user.username, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                username: user.username,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, error: 'Login failed' });
+    }
+});
+
+// GET /api/auth/verify - Verify token
+app.get('/api/auth/verify', authenticateToken, (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            username: req.user.username,
+            role: req.user.role
+        }
+    });
+});
+
+// ============================================
+// API ROUTES
+// ============================================
 
 // GET /api/projects - Get all projects
 app.get('/api/projects', (req, res) => {

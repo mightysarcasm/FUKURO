@@ -3058,20 +3058,19 @@ function setupDatePickerModal() {
 // LOGIN SYSTEM
 // ============================================
 
-const USERS = {
-    admin: { password: 'admin', role: 'admin' },
-    penthouse: { password: 'penthouse', role: 'client' }
-};
-
 let currentUser = null;
+let authToken = null;
 
 function setupLoginSystem() {
     console.log('Setting up login system...');
     
     // Check if already logged in
     const savedUser = sessionStorage.getItem('currentUser');
-    if (savedUser) {
+    const savedToken = sessionStorage.getItem('authToken');
+    
+    if (savedUser && savedToken) {
         currentUser = JSON.parse(savedUser);
+        authToken = savedToken;
         showViewForUser(currentUser);
         return;
     }
@@ -3101,7 +3100,7 @@ function setupLoginSystem() {
     usernameInput.addEventListener('keydown', handleEnter);
     passwordInput.addEventListener('keydown', handleEnter);
 
-    loginBtn.addEventListener('click', (e) => {
+    loginBtn.addEventListener('click', async (e) => {
         console.log('Login button clicked');
         e.preventDefault();
         
@@ -3116,24 +3115,44 @@ function setupLoginSystem() {
             return;
         }
 
-        const user = USERS[username];
-        if (!user || user.password !== password) {
-            console.log('Invalid credentials');
-            loginError.textContent = 'Usuario o contraseña incorrectos';
+        try {
+            // Call authentication API
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                console.log('Invalid credentials from server');
+                loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
+                loginError.classList.remove('hidden');
+                return;
+            }
+
+            // Successful login
+            console.log('Login successful!', data.user);
+            currentUser = data.user;
+            authToken = data.token;
+            
+            // Store in sessionStorage
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            sessionStorage.setItem('authToken', authToken);
+            
+            loginError.classList.add('hidden');
+            usernameInput.value = '';
+            passwordInput.value = '';
+
+            showViewForUser(currentUser);
+        } catch (error) {
+            console.error('Login error:', error);
+            loginError.textContent = 'Error al conectar con el servidor';
             loginError.classList.remove('hidden');
-            return;
         }
-
-        // Successful login
-        console.log('Login successful!', user);
-        currentUser = { username, role: user.role };
-        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        loginError.classList.add('hidden');
-        usernameInput.value = '';
-        passwordInput.value = '';
-
-        showViewForUser(currentUser);
     });
 
     // Setup menu buttons
@@ -3233,7 +3252,9 @@ function showView(viewId) {
 function logout() {
     console.log('Logging out...');
     currentUser = null;
+    authToken = null;
     sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('authToken');
     
     const backendContainer = document.getElementById('backend-login-container');
     if (backendContainer) {
