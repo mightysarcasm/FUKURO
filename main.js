@@ -1,34 +1,71 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+// --- Configuración de API ---
+// IMPORTANTE: Para producción, usa un backend proxy para proteger tu API key
+// Por ahora, puedes configurar tu API key aquí o usar una variable de entorno
+function getOpenAIApiKey() {
+    // Primero intentar variable de entorno
+    if (import.meta.env && import.meta.env.VITE_OPENAI_API_KEY) {
+        return import.meta.env.VITE_OPENAI_API_KEY;
+    }
+    
+    // Luego intentar localStorage
+    let storedKey = localStorage.getItem('openai_api_key');
+    if (storedKey && storedKey.trim() !== '') {
+        return storedKey;
+    }
+    
+    return null; // No pedir automáticamente, solo cuando se necesite
+}
+
+function requestApiKey() {
+    const userKey = prompt('Por favor, ingresa tu OpenAI API Key (se guardará localmente):');
+    if (userKey && userKey.trim()) {
+        localStorage.setItem('openai_api_key', userKey.trim());
+        return userKey.trim();
+    }
+    return null;
+}
+
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
 // --- Lógica de UI ---
 let currentForm = null;
-// let currentFormData = null; // ELIMINADO - Ya no guardamos el estado aquí
+let parsedData = null; // Almacenar datos parseados por GPT
 
 // --- Lógica del Modal ---
-const modal = document.getElementById('quote-modal');
-const modifyBtn = document.getElementById('modify-quote-btn');
-const acceptBtn = document.getElementById('accept-quote-btn');
-const modalOverlay = document.getElementById('modal-overlay');
+let modal, modifyBtn, acceptBtn, modalOverlay;
+
+function initModal() {
+    modal = document.getElementById('quote-modal');
+    modifyBtn = document.getElementById('modify-quote-btn');
+    acceptBtn = document.getElementById('accept-quote-btn');
+    modalOverlay = document.getElementById('modal-overlay');
+    
+    if (modifyBtn) modifyBtn.addEventListener('click', hideModal);
+    if (modalOverlay) modalOverlay.addEventListener('click', hideModal);
+}
 
 function showModal() {
-    modal.classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
 }
 
 function hideModal() { 
-    modal.classList.add('hidden'); 
+    if (modal) modal.classList.add('hidden'); 
     const statusDiv = document.getElementById('modal-status');
-    statusDiv.innerHTML = "";
-    acceptBtn.disabled = false;
-    acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
-    modifyBtn.disabled = false;
+    if (statusDiv) statusDiv.innerHTML = "";
+    if (acceptBtn) {
+        acceptBtn.disabled = false;
+        acceptBtn.textContent = "[ ACEPTAR Y ENVIAR ]";
+    }
+    if (modifyBtn) modifyBtn.disabled = false;
 }
 
-modifyBtn.addEventListener('click', hideModal);
-modalOverlay.addEventListener('click', hideModal);
-
 // ** CORRECCIÓN: La lógica de envío ahora está TODA dentro del click **
-acceptBtn.addEventListener('click', () => {
+function setupAcceptButton() {
+    if (!acceptBtn) return;
+    acceptBtn.addEventListener('click', () => {
     // 1. Capturar los datos FRESCOS ahora
     const currentFormData = new FormData(currentForm);
     
@@ -436,6 +473,7 @@ async function sendFormToSpree(formData) {
         // Limpiar datos de sessionStorage si el envío falla
         sessionStorage.removeItem('fukuroQuote');
     }
+    });
 }
 
 // --- Lógica de Three.js ---
@@ -571,12 +609,424 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// --- Lógica de Chat y Parsing con GPT ---
+function addChatMessage(message, isUser = false) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = isUser 
+        ? 'text-right text-gray-200' 
+        : 'text-left text-yellow-300';
+    messageDiv.textContent = isUser ? `> ${message}` : `// ${message}`;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function parseUserInputWithGPT(userInput, history = [], apiKey) {
+    if (!apiKey || apiKey.trim() === '') {
+        throw new Error('OpenAI API Key no configurada. Por favor, configura VITE_OPENAI_API_KEY o ingresa tu API key.');
+    }
+
+    const systemPrompt = `Eres un asistente que extrae información de solicitudes de cotización para servicios de audio/video. 
+Analiza el texto del usuario y extrae la siguiente información en formato JSON:
+
+{
+  "name": "nombre del cliente",
+  "email": "email del cliente",
+  "projectName": "nombre del proyecto",
+  "isExistingProject": true/false,
+  "serviceType": ["Audio", "Video"] o ["Audio"] o ["Video"],
+  "audio": {
+    "quantity": número,
+    "minutes": número,
+    "seconds": número,
+    "format": "formato de audio",
+    "resolution": "calidad de audio"
+  },
+  "video": {
+    "quantity": número,
+    "minutes": número,
+    "seconds": número,
+    "format": "formato de video",
+    "resolution": "resolución de video"
+  },
+  "timeline": "YYYY-MM-DD",
+  "brief": "descripción del proyecto",
+  "assetsLink": "link de recursos si se menciona"
+}
+
+Si algún campo no está presente en el texto, usa null. Para fechas, intenta interpretar (ej: "15 de diciembre" -> "2024-12-15", "mañana" -> fecha de mañana).
+Para serviceType, determina si menciona audio, video, o ambos.
+Si el usuario está proporcionando información adicional en una conversación, solo extrae los campos nuevos o actualizados.
+Responde SOLO con el JSON, sin explicaciones adicionales.`;
+
+    // Construir mensajes con historial
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        { role: 'user', content: userInput }
+    ];
+
+    try {
+        const response = await fetch(OPENAI_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: messages,
+                temperature: 0.3,
+                max_tokens: 1000
+            })
+        });
+
+        if (!response.ok) {
+            let errorMessage = 'Error al comunicarse con OpenAI';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content.trim();
+        
+        // Intentar extraer JSON del contenido (puede venir con markdown)
+        let jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error('No se pudo extraer JSON de la respuesta');
+        }
+        
+        return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+        console.error('Error parsing with GPT:', error);
+        throw error;
+    }
+}
+
+function parseDate(dateStr) {
+    if (!dateStr) return null;
+    
+    // Si ya está en formato YYYY-MM-DD, usarlo directamente
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+    
+    // Intentar parsear la fecha
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    return null;
+}
+
+function fillFormFromParsedData(data) {
+    // Llenar campos básicos
+    if (data.name) document.getElementById('name').value = data.name;
+    if (data.email) document.getElementById('email').value = data.email;
+    if (data.projectName) document.getElementById('project-name').value = data.projectName;
+    
+    // Parsear fecha si existe
+    if (data.timeline) {
+        const parsedDate = parseDate(data.timeline);
+        if (parsedDate) {
+            document.getElementById('timeline').value = parsedDate;
+        }
+    }
+    
+    if (data.brief) document.getElementById('brief').value = data.brief;
+    if (data.assetsLink) document.getElementById('assets-link').value = data.assetsLink;
+    
+    // Checkbox de proyecto existente
+    if (data.isExistingProject !== null) {
+        document.getElementById('existing-project').checked = data.isExistingProject;
+    }
+    
+    // Servicios
+    const audioCheckbox = document.getElementById('service-audio');
+    const videoCheckbox = document.getElementById('service-video');
+    
+    if (data.serviceType && Array.isArray(data.serviceType)) {
+        audioCheckbox.checked = data.serviceType.includes('Audio');
+        videoCheckbox.checked = data.serviceType.includes('Video');
+    }
+    
+    // Detalles de Audio
+    if (data.audio) {
+        if (data.audio.quantity) document.getElementById('audio_quantity').value = Math.min(data.audio.quantity, 10);
+        if (data.audio.minutes !== null && data.audio.minutes !== undefined) {
+            document.getElementById('audio_min').value = data.audio.minutes;
+        }
+        if (data.audio.seconds !== null && data.audio.seconds !== undefined) {
+            document.getElementById('audio_sec').value = data.audio.seconds;
+        }
+        if (data.audio.format) document.getElementById('format_av_audio').value = data.audio.format;
+        if (data.audio.resolution) document.getElementById('resolution_av_audio').value = data.audio.resolution;
+    }
+    
+    // Detalles de Video
+    if (data.video) {
+        if (data.video.quantity) document.getElementById('video_quantity').value = Math.min(data.video.quantity, 10);
+        if (data.video.minutes !== null && data.video.minutes !== undefined) {
+            document.getElementById('video_min').value = data.video.minutes;
+        }
+        if (data.video.seconds !== null && data.video.seconds !== undefined) {
+            document.getElementById('video_sec').value = data.video.seconds;
+        }
+        if (data.video.format) document.getElementById('format_av_video').value = data.video.format;
+        if (data.video.resolution) document.getElementById('resolution_av_video').value = data.video.resolution;
+    }
+    
+    // Recalcular cotización
+    setupQuoteCalculator();
+    
+    // Trigger change events para que se calculen los valores
+    audioCheckbox.dispatchEvent(new Event('change'));
+    videoCheckbox.dispatchEvent(new Event('change'));
+}
+
+function getMissingFields(data) {
+    const missing = [];
+    const required = ['name', 'email', 'projectName', 'timeline'];
+    
+    required.forEach(field => {
+        if (!data[field]) {
+            missing.push(field);
+        }
+    });
+    
+    // Verificar que al menos un servicio esté seleccionado
+    if (!data.serviceType || !Array.isArray(data.serviceType) || data.serviceType.length === 0) {
+        missing.push('serviceType');
+    }
+    
+    return missing;
+}
+
+let conversationHistory = []; // Guardar historial de conversación
+
+async function handleParseInput() {
+    console.log('handleParseInput called'); // Debug
+    
+    const userInput = document.getElementById('user-input');
+    const parseBtn = document.getElementById('parse-input-btn');
+    const chatStatus = document.getElementById('chat-status');
+    const chatInterface = document.getElementById('chat-interface');
+    const formActions = document.getElementById('form-actions');
+    
+    if (!userInput || !parseBtn || !chatStatus) {
+        console.error('Required elements not found');
+        alert('Error: No se encontraron elementos necesarios. Por favor, recarga la página.');
+        return;
+    }
+    
+    const inputText = userInput.value.trim();
+    
+    if (!inputText) {
+        chatStatus.innerHTML = '<p class="text-red-500">// Por favor, escribe algo sobre tu proyecto.</p>';
+        return;
+    }
+    
+    // Verificar API key ANTES de continuar
+    let apiKey = getOpenAIApiKey();
+    
+    if (!apiKey || apiKey.trim() === '') {
+        console.log('No API key found, requesting from user');
+        addChatMessage('Se requiere una API Key de OpenAI para continuar.', false);
+        chatStatus.innerHTML = '<p class="text-yellow-300">// Solicitando API Key...</p>';
+        
+        // Intentar obtener la key
+        apiKey = requestApiKey();
+        
+        if (!apiKey || apiKey.trim() === '') {
+            const errorMsg = 'API Key requerida. Por favor, proporciona tu OpenAI API Key para continuar.';
+            console.error(errorMsg);
+            addChatMessage(`Error: ${errorMsg}`, false);
+            chatStatus.innerHTML = `<p class="text-red-500">-- ERROR: ${errorMsg} --</p>`;
+            parseBtn.disabled = false;
+            parseBtn.textContent = '[ ANALIZAR Y LLENAR FORMULARIO ]';
+            return;
+        }
+        
+        // Si obtuvimos la key, continuar
+        addChatMessage('API Key configurada. Continuando...', false);
+    }
+    
+    // Agregar mensaje del usuario al historial
+    conversationHistory.push({ role: 'user', content: inputText });
+    
+    // Mostrar mensaje del usuario
+    addChatMessage(inputText, true);
+    
+    // Limpiar input
+    userInput.value = '';
+    
+    // Deshabilitar botón y mostrar estado
+    parseBtn.disabled = true;
+    parseBtn.textContent = '[ ANALIZANDO... ]';
+    chatStatus.innerHTML = '<p class="text-yellow-300">// Analizando tu mensaje...</p>';
+    
+    try {
+        console.log('Calling parseUserInputWithGPT with API key:', apiKey ? 'present' : 'missing'); // Debug
+        // Llamar a GPT con historial de conversación
+        const parsedData = await parseUserInputWithGPT(inputText, conversationHistory, apiKey);
+        console.log('Parsed data:', parsedData); // Debug
+        
+        // Combinar con datos anteriores si existen
+        const previousData = window.parsedData || {};
+        const mergedData = { ...previousData, ...parsedData };
+        
+        // Guardar datos parseados combinados
+        window.parsedData = mergedData;
+        
+        // Verificar campos faltantes
+        const missingFields = getMissingFields(mergedData);
+        
+        if (missingFields.length > 0) {
+            const fieldNames = {
+                'name': 'nombre',
+                'email': 'email',
+                'projectName': 'nombre del proyecto',
+                'timeline': 'fecha de entrega',
+                'serviceType': 'tipo de servicio (Audio o Video)'
+            };
+            
+            const missingList = missingFields.map(f => fieldNames[f] || f).join(', ');
+            addChatMessage(`Necesito más información: ${missingList}. Por favor, proporciona estos datos.`, false);
+            chatStatus.innerHTML = `<p class="text-yellow-300">// Algunos datos faltan. Por favor, proporciona: ${missingList}</p>`;
+            parseBtn.disabled = false;
+            parseBtn.textContent = '[ ENVIAR INFORMACIÓN ADICIONAL ]';
+            return;
+        }
+        
+        // Llenar formulario con datos combinados
+        fillFormFromParsedData(mergedData);
+        
+        // Mostrar éxito
+        addChatMessage('Formulario llenado exitosamente. Revisa los datos y ajusta si es necesario.', false);
+        chatStatus.innerHTML = '<p class="text-green-400 neon-shadow">++ FORMULARIO LLENADO ++</p>';
+        
+        // Ocultar chat, mostrar acciones
+        if (chatInterface) chatInterface.classList.add('hidden');
+        if (formActions) formActions.classList.remove('hidden');
+        
+        // Limpiar historial para próxima vez
+        conversationHistory = [];
+        
+    } catch (error) {
+        console.error('Error in handleParseInput:', error);
+        const errorMessage = error.message || 'Error desconocido';
+        addChatMessage(`Error: ${errorMessage}`, false);
+        chatStatus.innerHTML = `<p class="text-red-500">-- ERROR: ${errorMessage} --</p>`;
+        parseBtn.disabled = false;
+        parseBtn.textContent = '[ ANALIZAR Y LLENAR FORMULARIO ]';
+    }
+}
+
+function showForm() {
+    const form = document.getElementById('quote-form');
+    const formActions = document.getElementById('form-actions');
+    form.classList.remove('hidden');
+    formActions.classList.add('hidden');
+    
+    // Scroll al formulario
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetToChat() {
+    const chatInterface = document.getElementById('chat-interface');
+    const form = document.getElementById('quote-form');
+    const formActions = document.getElementById('form-actions');
+    const chatMessages = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+    const parseBtn = document.getElementById('parse-input-btn');
+    
+    // Resetear todo
+    chatMessages.innerHTML = '<div class="text-sm text-gray-300/70">// Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.</div>';
+    userInput.value = '';
+    form.classList.add('hidden');
+    formActions.classList.add('hidden');
+    chatInterface.classList.remove('hidden');
+    form.reset();
+    setupQuoteCalculator();
+    
+    // Resetear variables
+    conversationHistory = [];
+    window.parsedData = null;
+    parseBtn.textContent = '[ ANALIZAR Y LLENAR FORMULARIO ]';
+}
+
 // --- Iniciar todo ---
+// Inicializar modal primero
+initModal();
+// Luego configurar el botón de aceptar (después de que initModal haya asignado acceptBtn)
+if (acceptBtn) {
+    setupAcceptButton();
+}
+
 // Enlazar el formulario y la calculadora al cargar la página
 currentForm = document.getElementById('quote-form');
 if (currentForm) {
     currentForm.addEventListener('submit', handleGenerateQuote);
     setupQuoteCalculator(); 
 }
+
+// Enlazar botones de chat - Esperar a que el DOM esté listo
+function setupChatInterface() {
+    const parseBtn = document.getElementById('parse-input-btn');
+    if (parseBtn) {
+        console.log('Parse button found, adding event listener'); // Debug
+        // Remover cualquier listener previo
+        parseBtn.replaceWith(parseBtn.cloneNode(true));
+        const newParseBtn = document.getElementById('parse-input-btn');
+        newParseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Parse button clicked'); // Debug
+            handleParseInput();
+        });
+    } else {
+        console.error('Parse button not found!'); // Debug
+        // Intentar de nuevo después de un breve delay
+        setTimeout(setupChatInterface, 100);
+    }
+}
+
+// Esperar a que el DOM esté completamente cargado
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupChatInterface);
+} else {
+    setupChatInterface();
+}
+
+const showFormBtn = document.getElementById('show-form-btn');
+if (showFormBtn) {
+    showFormBtn.addEventListener('click', showForm);
+}
+
+const regenerateBtn = document.getElementById('regenerate-btn');
+if (regenerateBtn) {
+    regenerateBtn.addEventListener('click', resetToChat);
+}
+
+// Permitir Enter para enviar (Shift+Enter para nueva línea)
+const userInput = document.getElementById('user-input');
+if (userInput) {
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleParseInput();
+        }
+    });
+}
+
 // Iniciar el fondo 3D
 initThree();

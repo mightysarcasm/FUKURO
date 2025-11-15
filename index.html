@@ -252,8 +252,32 @@
                 <!-- TÍTULO CAMBIADO AQUÍ -->
                 <h2 class="text-2xl md:text-3xl neon-shadow mb-4">++ LET'S SYNTHESIZE ++</h2>
                 
+                <!-- Chat Interface for Free Text Input -->
+                <div id="chat-interface" class="space-y-4 mb-6">
+                    <div id="chat-messages" class="space-y-3 max-h-96 overflow-y-auto mb-4">
+                        <div class="text-sm text-gray-300/70">
+                            // Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <textarea 
+                            id="user-input" 
+                            class="form-textarea text-lg flex-grow" 
+                            rows="6" 
+                            placeholder="Ejemplo: Hola, soy Juan Pérez, mi email es juan@example.com. Necesito producción de audio para 3 tracks de 2 minutos cada uno en formato WAV 48kHz/24bit. El proyecto se llama 'Mi Album' y necesito entregarlo el 15 de diciembre. Es un proyecto nuevo..."
+                        ></textarea>
+                    </div>
+                    <button 
+                        id="parse-input-btn" 
+                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl sm:text-2xl"
+                    >
+                        [ ANALIZAR Y LLENAR FORMULARIO ]
+                    </button>
+                    <div id="chat-status" class="text-center text-sm"></div>
+                </div>
+                
                 <!-- ID de FORMSPREE Y AJUSTES DE SPAM -->
-                <form id="quote-form" action="https://formspree.io/f/xjkjgqln" method="POST" class="space-y-6" novalidate>
+                <form id="quote-form" action="https://formspree.io/f/xjkjgqln" method="POST" class="space-y-6 hidden" novalidate>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -427,6 +451,22 @@
                     </div>
                 </form>
                 <div id="form-status" class="mt-4 text-center"></div>
+                
+                <!-- Button to show form after parsing -->
+                <div id="form-actions" class="hidden mt-4">
+                    <button 
+                        id="show-form-btn" 
+                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl sm:text-2xl mb-4"
+                    >
+                        [ VER Y EDITAR FORMULARIO ]
+                    </button>
+                    <button 
+                        id="regenerate-btn" 
+                        class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-lg border-gray-500 text-gray-300"
+                    >
+                        [ ESCRIBIR NUEVO MENSAJE ]
+                    </button>
+                </div>
 
             </div> <!-- Fin de content-area -->
 
