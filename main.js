@@ -50,6 +50,8 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 // --- Lógica de UI ---
 let currentForm = null;
 let parsedData = null; // Almacenar datos parseados por GPT
+let projects = []; // Lista de proyectos existentes
+const API_BASE_URL = window.location.origin; // Use same origin for API calls
 
 // --- Lógica del Modal ---
 let modal, modifyBtn, acceptBtn, modalOverlay;
@@ -161,8 +163,8 @@ function setupAcceptButton() {
         return; // No continuar si no se puede guardar
     }
 
-    // 3. Enviar los datos FRESCOS a Formspree
-    sendFormToSpree(currentFormData);
+    // 3. Enviar los datos FRESCOS al backend
+    sendFormToBackend(currentFormData);
     });
 }
 
@@ -476,7 +478,7 @@ function handleGenerateQuote(event) {
     showModal();
 }
 
-async function sendFormToSpree(formData, options = {}) {
+async function sendFormToBackend(formData, options = {}) {
     const statusElement = document.getElementById(options.statusElementId || 'modal-status');
     const submitButton = options.acceptButton || acceptBtn;
     const secondaryButton = options.modifyButton || modifyBtn;
@@ -492,15 +494,24 @@ async function sendFormToSpree(formData, options = {}) {
     if (secondaryButton) secondaryButton.disabled = true;
 
     try {
-        const response = await fetch(currentForm.action, {
-            method: currentForm.method,
-            body: formData,
+        // Convert FormData to JSON object
+        const formDataObj = {};
+        for (const [key, value] of formData.entries()) {
+            formDataObj[key] = value;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/api/quotes`, {
+            method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify(formDataObj)
         });
 
-        if (response.ok) {
+        const responseData = await response.json();
+
+        if (response.ok && responseData.success) {
             if (statusElement) {
                 statusElement.innerHTML = `
                 <p class="text-gray-200 neon-shadow">++ TRANSMISIÓN_EXITOSA ++</p>
@@ -509,7 +520,10 @@ async function sendFormToSpree(formData, options = {}) {
             `;
             }
             
-            // --- ¡NUEVO! Redirección ---
+            // Reload projects to update counts
+            await loadProjects();
+            
+            // --- Redirección ---
             setTimeout(() => {
                 window.location.href = 'cotizacion.html'; 
             }, 1500); // Esperar 1.5 seg antes de redirigir
@@ -520,13 +534,8 @@ async function sendFormToSpree(formData, options = {}) {
             if (submitButton) submitButton.disabled = true;
             
         } else {
-            const responseData = await response.json();
-            if (Object.hasOwn(responseData, 'errors')) {
-                const errorMsg = responseData["errors"].map(error => error["message"]).join(", ");
-                throw new Error(errorMsg);
-            } else {
-                throw new Error('Respuesta no-OK del servidor.');
-            }
+            const errorMsg = responseData.error || 'Error del servidor';
+            throw new Error(errorMsg);
         }
     } catch (error) {
         console.error("Error al enviar formulario:", error);
@@ -547,7 +556,7 @@ function handleChatModalSend(event) {
     if (!currentForm) return;
     prepareFormForSubmission();
     const formData = new FormData(currentForm);
-    sendFormToSpree(formData, {
+    sendFormToBackend(formData, {
         statusElementId: 'chat-modal-status',
         acceptButton: chatModalSendBtn,
         modifyButton: chatModalNewBtn,
@@ -1282,6 +1291,91 @@ if (userInput) {
             handleParseInput();
         }
     });
+}
+
+// --- Project Management ---
+async function loadProjects() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/projects`);
+        if (response.ok) {
+            const data = await response.json();
+            projects = data.projects || [];
+            updateProjectDropdown();
+        } else {
+            console.error('Failed to load projects');
+        }
+    } catch (error) {
+        console.error('Error loading projects:', error);
+    }
+}
+
+function updateProjectDropdown() {
+    const select = document.getElementById('existing-project-name');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Selecciona un proyecto...</option>';
+    
+    if (projects.length === 0) {
+        select.innerHTML = '<option value="">No hay proyectos existentes</option>';
+        return;
+    }
+    
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.name;
+        option.textContent = `${project.name} (${project.quoteCount || 0} cotizaciones)`;
+        select.appendChild(option);
+    });
+}
+
+function setupProjectSelection() {
+    const projectTypeNew = document.getElementById('project-type-new');
+    const projectTypeExisting = document.getElementById('project-type-existing');
+    const existingProjectSelect = document.getElementById('existing-project-select');
+    const existingProjectName = document.getElementById('existing-project-name');
+    const existingProjectCheckbox = document.getElementById('existing-project');
+    
+    if (!projectTypeNew || !projectTypeExisting || !existingProjectSelect) return;
+    
+    function handleProjectTypeChange() {
+        if (projectTypeNew.checked) {
+            existingProjectSelect.classList.add('hidden');
+            if (existingProjectCheckbox) existingProjectCheckbox.checked = false;
+        } else {
+            existingProjectSelect.classList.remove('hidden');
+            if (existingProjectName && existingProjectName.value) {
+                const projectNameInput = document.getElementById('project-name');
+                if (projectNameInput) {
+                    projectNameInput.value = existingProjectName.value;
+                }
+                if (existingProjectCheckbox) existingProjectCheckbox.checked = true;
+            }
+        }
+    }
+    
+    projectTypeNew.addEventListener('change', handleProjectTypeChange);
+    projectTypeExisting.addEventListener('change', handleProjectTypeChange);
+    
+    if (existingProjectName) {
+        existingProjectName.addEventListener('change', (e) => {
+            const projectNameInput = document.getElementById('project-name');
+            if (projectNameInput) {
+                projectNameInput.value = e.target.value;
+            }
+            if (existingProjectCheckbox) existingProjectCheckbox.checked = true;
+        });
+    }
+}
+
+// Initialize project selection when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setupProjectSelection();
+        loadProjects();
+    });
+} else {
+    setupProjectSelection();
+    loadProjects();
 }
 
 // Iniciar el fondo 3D

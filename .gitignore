@@ -1,5 +1,8 @@
 # API Keys and sensitive configuration
 config.js
+node_modules/
+data/
+*.log
 
 # Environment variables
 .env

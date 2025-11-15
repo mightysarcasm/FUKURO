@@ -94,7 +94,7 @@
             box-shadow: 0 0 10px #e0e0e0, 0 0 20px #e0e0e0;
         }
         
-        .form-input, .form-textarea, .form-select {
+        .form-input, .form-textarea, .form-select, .form-radio {
             background-color: rgba(0, 0, 0, 0.5);
             border: 1px solid #e0e0e0; /* Borde Blanco */
             color: #e0e0e0; /* Texto Blanco */
@@ -102,6 +102,13 @@
             width: 100%;
             border-radius: 4px;
             font-family: 'VT323', monospace;
+        }
+        
+        .form-radio {
+            width: auto;
+            padding: 0;
+            margin-right: 8px;
+            cursor: pointer;
             font-size: 1.125rem;
             transition: all 0.2s ease;
         }
@@ -252,6 +259,29 @@
                 <!-- TÍTULO CAMBIADO AQUÍ -->
                 <h2 class="text-2xl md:text-3xl neon-shadow mb-4">++ LET'S SYNTHESIZE ++</h2>
                 
+                <!-- Project Selection -->
+                <div id="project-selection" class="mb-6 space-y-4">
+                    <div>
+                        <label class="form-label">[ SELECCIONAR PROYECTO ]</label>
+                        <div class="flex gap-4 items-center">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="project-type" value="new" id="project-type-new" checked class="form-radio">
+                                <span>Nuevo Proyecto</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="project-type" value="existing" id="project-type-existing" class="form-radio">
+                                <span>Proyecto Existente</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="existing-project-select" class="hidden">
+                        <label for="existing-project-name" class="form-label">[ PROYECTO ]</label>
+                        <select id="existing-project-name" class="form-select text-lg">
+                            <option value="">Cargando proyectos...</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <!-- Chat Interface for Free Text Input -->
                 <div id="chat-interface" class="space-y-4 mb-6">
                     <div id="chat-messages" class="space-y-3 max-h-96 overflow-y-auto mb-4">
@@ -289,8 +319,8 @@
                     <div id="chat-status" class="text-center text-sm"></div>
                 </div>
                 
-                <!-- ID de FORMSPREE Y AJUSTES DE SPAM -->
-                <form id="quote-form" action="https://formspree.io/f/xjkjgqln" method="POST" class="space-y-6 hidden" novalidate>
+                <!-- Form for Quote Submission -->
+                <form id="quote-form" action="/api/quotes" method="POST" class="space-y-6 hidden" novalidate>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
