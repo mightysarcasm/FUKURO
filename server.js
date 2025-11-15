@@ -689,8 +689,14 @@ app.get('/api/drive-stream/:fileId', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`FUKURO backend server running on http://localhost:${PORT}`);
-    console.log(`Drive streaming available at: http://localhost:${PORT}/api/drive-stream/:fileId`);
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces for production
+app.listen(PORT, HOST, () => {
+    console.log(`FUKURO backend server running on ${HOST}:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    if (process.env.NODE_ENV === 'production') {
+        console.log(`Server is accessible from the internet`);
+    } else {
+        console.log(`Local access: http://localhost:${PORT}`);
+    }
 });
 
