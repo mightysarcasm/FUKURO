@@ -922,18 +922,45 @@ window.handleVideoError = function(index, url) {
     const errorMessages = {
         1: 'Carga abortada',
         2: 'Error de red',
-        3: 'Error de decodificación - el video puede estar en un formato no soportado',
+        3: 'Error de decodificación - el codec del video no es compatible con este navegador',
         4: 'Video no encontrado o formato no soportado'
     };
     
     const errorMsg = errorMessages[errorCode] || 'Error desconocido al cargar video';
     
+    // Detect browser
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isEdge = /Edg/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    const browserName = isEdge ? 'Edge' : isChrome ? 'Chrome' : isSafari ? 'Safari' : 'este navegador';
+    
     container.innerHTML = `
         <div class="p-6 bg-red-900/20 border border-red-500/50 rounded text-center">
             <p class="text-red-300 text-lg mb-2">⚠️ Error al cargar video</p>
             <p class="text-gray-300 text-sm mb-4">${errorMsg}</p>
-            <p class="text-gray-400 text-xs mb-4">El archivo puede necesitar recodificación. Formatos recomendados: H.264 + AAC</p>
-            <div class="flex gap-3 justify-center">
+            <p class="text-gray-400 text-xs mb-4">
+                ${errorCode === 3 || errorCode === 4 ? `
+                    <strong>Problema de Codec:</strong> Este video usa un codec que ${browserName} no puede reproducir.<br>
+                    El video necesita ser re-codificado con H.264 (Baseline Profile) + AAC para funcionar en todos los navegadores.
+                ` : 'El archivo puede necesitar recodificación. Formatos recomendados: H.264 + AAC'}
+            </p>
+            ${errorCode === 3 || errorCode === 4 ? `
+                <details class="mb-4 text-left">
+                    <summary class="cursor-pointer text-yellow-300 hover:text-yellow-200 text-sm">
+                        📋 Comando para re-codificar (ffmpeg)
+                    </summary>
+                    <div class="mt-2 p-3 bg-black/50 rounded">
+                        <p class="text-xs text-gray-400 mb-2">Descarga el video y ejecuta:</p>
+                        <code class="block text-xs text-green-300 font-mono break-all">
+                            ffmpeg -i input.mp4 -c:v libx264 -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:a aac -b:a 128k output.mp4
+                        </code>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Este comando convierte el video a un formato compatible con todos los navegadores.
+                        </p>
+                    </div>
+                </details>
+            ` : ''}
+            <div class="flex gap-3 justify-center flex-wrap">
                 <a href="${url}" download class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">
                     [ DESCARGAR VIDEO ]
                 </a>
