@@ -259,6 +259,10 @@ function displayFileDetails(index) {
     let isDropboxVideo = false;
     let dropboxUrl = null;
     
+    // Check if it's a Vimeo video link
+    let isVimeoVideo = false;
+    let vimeoVideoId = null;
+    
     if (work.type === 'link' && work.url) {
         // Match Google Drive video URLs
         const driveMatch = work.url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -274,6 +278,14 @@ function displayFileDetails(index) {
             isYouTubeVideo = true;
             youtubeVideoId = youtubeMatch[1];
             isVideo = true; // Treat YouTube videos as videos
+        }
+        
+        // Match Vimeo URLs (vimeo.com/123456, player.vimeo.com/video/123456)
+        const vimeoMatch = work.url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+        if (vimeoMatch) {
+            isVimeoVideo = true;
+            vimeoVideoId = vimeoMatch[1];
+            isVideo = true; // Treat Vimeo videos as videos
         }
         
         // Match Dropbox URLs (dropbox.com or dl.dropboxusercontent.com)
@@ -423,6 +435,36 @@ function displayFileDetails(index) {
                                 <p class="text-xs text-red-300 mb-1">📺 <strong>Video de YouTube</strong></p>
                                 <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
                             </div>
+                        ` : isVimeoVideo ? `
+                            <iframe 
+                                id="video-${index}"
+                                src="https://player.vimeo.com/video/${vimeoVideoId}" 
+                                class="w-full bg-black rounded" 
+                                style="height: 500px; border: none;"
+                                frameborder="0"
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                allowfullscreen
+                            ></iframe>
+                            <script src="https://player.vimeo.com/api/player.js"></script>
+                            <script>
+                                (function() {
+                                    setTimeout(function() {
+                                        const iframe = document.getElementById('video-${index}');
+                                        const player = new Vimeo.Player(iframe);
+                                        
+                                        // Store player globally for timestamp capture
+                                        window['vimeo_player_${index}'] = player;
+                                        
+                                        player.ready().then(function() {
+                                            console.log('Vimeo player ready for video ${index}');
+                                        });
+                                    }, 500);
+                                })();
+                            </script>
+                            <div class="mt-2 p-3 bg-purple-900/20 border border-purple-300/30 rounded">
+                                <p class="text-xs text-purple-300 mb-1">📹 <strong>Video de Vimeo</strong></p>
+                                <p class="text-xs text-gray-300">Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
+                            </div>
                         ` : isDriveVideo ? `
                             <iframe 
                                 id="drive-video-${index}"
@@ -466,7 +508,7 @@ function displayFileDetails(index) {
                                 </div>
                             ` : `
                                 <div class="flex gap-2 mb-2">
-                                    <button onclick="addTimestamp(${index}, 'video', ${isYouTubeVideo})" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
+                                    <button onclick="addTimestamp(${index}, 'video', ${isYouTubeVideo}, ${isVimeoVideo})" class="nav-link submit-btn px-3 py-1 rounded text-xs bg-yellow-500/20">
                                         [ TIMESTAMP ACTUAL ]
                                     </button>
                                     <input 
@@ -478,6 +520,7 @@ function displayFileDetails(index) {
                                     >
                                 </div>
                                 ${isDropboxVideo ? '<p class="text-xs text-gray-400 mb-2">Timestamps automáticos desde Dropbox</p>' : ''}
+                                ${isVimeoVideo ? '<p class="text-xs text-purple-300 mb-2">Timestamps automáticos desde Vimeo</p>' : ''}
                             `}
                             <textarea id="comment-${index}" class="form-textarea text-sm w-full" rows="2" placeholder="Escribe tu comentario..."></textarea>
                             <button onclick="saveComment(${index}, '${work.title}', 'video')" class="nav-link submit-btn px-3 py-1 rounded text-xs mt-2 w-full">
@@ -664,10 +707,27 @@ window.onYouTubeIframeAPIReady = function() {
 }
 
 // Add current timestamp to input
-window.addTimestamp = function(index, type, isYouTube = false) {
+window.addTimestamp = function(index, type, isYouTube = false, isVimeo = false) {
     const timestampInput = document.getElementById(`timestamp-${index}`);
     
-    if (isYouTube) {
+    if (isVimeo) {
+        // Handle Vimeo iframe
+        const vimeoPlayer = window[`vimeo_player_${index}`];
+        if (vimeoPlayer) {
+            vimeoPlayer.getCurrentTime().then(function(seconds) {
+                if (timestampInput) {
+                    timestampInput.value = formatTimestamp(seconds);
+                    timestampInput.dataset.seconds = seconds;
+                    console.log('Captured timestamp from Vimeo:', seconds);
+                }
+            }).catch(function(error) {
+                console.error('Error getting Vimeo time:', error);
+                alert('No se pudo obtener el tiempo actual del video de Vimeo.');
+            });
+        } else {
+            alert('El reproductor de Vimeo aún no está listo. Espera un momento e intenta de nuevo.');
+        }
+    } else if (isYouTube) {
         // Handle YouTube iframe
         if (!youtubePlayers[index]) {
             // Initialize YouTube player
@@ -716,6 +776,27 @@ window.addTimestamp = function(index, type, isYouTube = false) {
 
 // Seek to timestamp
 window.seekTo = function(index, seconds, type) {
+    // Try Vimeo player first
+    const vimeoPlayer = window[`vimeo_player_${index}`];
+    if (vimeoPlayer) {
+        vimeoPlayer.setCurrentTime(seconds).then(function() {
+            vimeoPlayer.play();
+            console.log('Seeked Vimeo to', seconds);
+        }).catch(function(error) {
+            console.error('Error seeking Vimeo:', error);
+        });
+        return;
+    }
+    
+    // Try YouTube player
+    if (youtubePlayers[index]) {
+        youtubePlayers[index].seekTo(seconds, true);
+        youtubePlayers[index].playVideo();
+        console.log('Seeked YouTube to', seconds);
+        return;
+    }
+    
+    // Fallback to native HTML5 element
     const media = document.getElementById(`${type}-${index}`);
     if (media) {
         media.currentTime = seconds;
