@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:3000';
+// Automatically detect if we're in production or development
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : window.location.origin;
 
 // Get project ID from URL
 const urlParams = new URLSearchParams(window.location.search);
