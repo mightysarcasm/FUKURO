@@ -2237,9 +2237,9 @@ function hideLoginModal() {
     const loginModal = document.getElementById('login-modal');
     if (loginModal) {
         loginModal.classList.add('hidden');
-        const loginForm = document.getElementById('login-form');
+        const loginForm = document.getElementById('backend-login-form');
         if (loginForm) loginForm.reset();
-        const loginError = document.getElementById('login-error');
+        const loginError = document.getElementById('backend-login-error');
         if (loginError) {
             loginError.classList.add('hidden');
             loginError.textContent = '';
@@ -2250,9 +2250,9 @@ function hideLoginModal() {
 function handleLogin(event) {
     if (event) event.preventDefault();
     
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    const loginError = document.getElementById('login-error');
+    const username = document.getElementById('backend-login-username').value.trim();
+    const password = document.getElementById('backend-login-password').value;
+    const loginError = document.getElementById('backend-login-error');
     
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         isAuthenticated = true;
@@ -2267,7 +2267,7 @@ function handleLogin(event) {
     }
 }
 
-function logout() {
+function logoutBackend() {
     isAuthenticated = false;
     sessionStorage.removeItem('backend_authenticated');
     hideBackendDashboard();
@@ -2929,8 +2929,8 @@ function setupBackendLogin() {
     const backendLoginBtn = document.getElementById('backend-login-btn');
     const loginModal = document.getElementById('login-modal');
     const loginModalOverlay = document.getElementById('login-modal-overlay');
-    const loginForm = document.getElementById('login-form');
-    const loginCancelBtn = document.getElementById('login-cancel-btn');
+    const loginForm = document.getElementById('backend-login-form');
+    const loginCancelBtn = document.getElementById('backend-login-cancel-btn');
     const backendLogoutBtn = document.getElementById('backend-logout-btn');
     const backendOverlay = document.getElementById('backend-overlay');
     
@@ -2963,7 +2963,7 @@ function setupBackendLogin() {
     }
     
     if (backendLogoutBtn) {
-        backendLogoutBtn.addEventListener('click', logout);
+        backendLogoutBtn.addEventListener('click', logoutBackend);
     }
     
     if (backendOverlay) {
@@ -3151,11 +3151,20 @@ function setupLoginSystem() {
     }
 
     if (cotizarBtn) {
+        console.log('Cotizar button found, adding listener');
         cotizarBtn.addEventListener('click', () => {
+            console.log('Cotizar button clicked!');
             showView('quote-view');
             const backBtn = document.getElementById('back-to-menu-from-quote-btn');
-            if (backBtn) backBtn.classList.remove('hidden');
+            if (backBtn) {
+                console.log('Back button found, showing it');
+                backBtn.classList.remove('hidden');
+            } else {
+                console.warn('Back button not found');
+            }
         });
+    } else {
+        console.warn('Cotizar button not found!');
     }
 
     if (logoutBtn) {
@@ -3185,15 +3194,20 @@ function showViewForUser(user) {
 }
 
 function showView(viewId) {
+    console.log('Showing view:', viewId);
     const views = ['login-view', 'menu-view', 'projects-dashboard-view', 'quote-view'];
     views.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             if (id === viewId) {
+                console.log('  - Showing:', id);
                 element.classList.remove('hidden');
             } else {
+                console.log('  - Hiding:', id);
                 element.classList.add('hidden');
             }
+        } else {
+            console.warn('  - Element not found:', id);
         }
     });
 }
