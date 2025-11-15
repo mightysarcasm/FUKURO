@@ -2509,48 +2509,29 @@ async function showProjectQuotes(projectName) {
                             <h3 class="text-xl text-gray-300 mb-3">[ ENTREGABLES ACTUALES ]</h3>
                             <div class="space-y-2">
                                 ${project.deliverables.map((d, idx) => {
-                                    const isAudio = d.type === 'file' && d.filename && /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(d.filename);
-                                    const isVideo = d.type === 'file' && d.filename && /\.(mp4|webm|mov|avi|mkv)$/i.test(d.filename);
                                     const fileUrl = d.url.startsWith('/') ? '${API_BASE_URL}' + d.url : d.url;
+                                    const version = d.version || 1;
                                     
                                     return `
                                         <div class="border border-gray-600 p-3 rounded ${d.approved ? 'border-green-500/50 bg-green-900/10' : ''}">
-                                            <div class="flex justify-between items-start">
+                                            <div class="flex justify-between items-center gap-3">
                                                 <div class="flex-1">
-                                                    <div class="flex items-center gap-2">
+                                                    <div class="flex items-center gap-2 flex-wrap">
                                                         <p class="text-yellow-300 font-bold">${d.title}</p>
+                                                        <span class="text-xs text-gray-400 border border-gray-600 px-2 py-0.5 rounded">v${version}</span>
                                                         ${d.approved ? '<span class="text-xs text-green-300 border border-green-300 px-2 py-0.5 rounded">✓ APROBADO</span>' : ''}
                                                     </div>
-                                                    ${d.type === 'file' ? `<p class="text-xs text-gray-500">${d.originalName || d.filename || 'Archivo'} ${d.fileSize ? `(${(d.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</p>` : '<p class="text-xs text-gray-500">Link externo</p>'}
+                                                    ${d.type === 'file' ? `<p class="text-xs text-gray-500 mt-1">${d.originalName || d.filename || 'Archivo'} ${d.fileSize ? `(${(d.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</p>` : '<p class="text-xs text-gray-500 mt-1">Link externo</p>'}
+                                                    ${d.notes ? `<p class="text-xs text-gray-400 mt-1">${d.notes}</p>` : ''}
+                                                    ${d.addedAt ? `<p class="text-xs text-gray-500 mt-1">${new Date(d.addedAt).toLocaleDateString('es-MX')}</p>` : ''}
                                                 </div>
-                                                <button onclick="deleteDeliverable('${project.id}', ${idx})" class="text-red-400 hover:text-red-300 text-xl ml-2">×</button>
+                                                <div class="flex gap-2">
+                                                    <a href="${fileUrl}" target="_blank" download class="nav-link submit-btn px-2 py-1 rounded text-xs whitespace-nowrap">
+                                                        [ ↓ ]
+                                                    </a>
+                                                    <button onclick="deleteDeliverable('${project.id}', ${idx})" class="text-red-400 hover:text-red-300 text-xl">×</button>
+                                                </div>
                                             </div>
-                                            
-                                            ${isAudio ? `
-                                                <div class="mt-2 mb-2">
-                                                    <audio controls preload="auto" class="w-full">
-                                                        <source src="${fileUrl}" type="audio/mp4">
-                                                        <source src="${fileUrl}" type="audio/mpeg">
-                                                        <source src="${fileUrl}">
-                                                    </audio>
-                                                </div>
-                                            ` : ''}
-                                            
-                                            ${isVideo ? `
-                                                <div class="mt-2 mb-2">
-                                                    <video controls preload="metadata" playsinline class="w-full">
-                                                        <source src="${fileUrl}" type="video/mp4">
-                                                        <source src="${fileUrl}" type="video/webm">
-                                                        <source src="${fileUrl}">
-                                                    </video>
-                                                </div>
-                                            ` : ''}
-                                            
-                                            <a href="${fileUrl}" target="_blank" download class="text-xs text-blue-300 hover:underline break-all block mt-2">
-                                                ${d.type === 'file' ? '[ DESCARGAR ]' : '[ ABRIR LINK ]'}
-                                            </a>
-                                            ${d.notes ? `<p class="text-xs text-gray-400 mt-2">${d.notes}</p>` : ''}
-                                            ${d.addedAt ? `<p class="text-xs text-gray-500 mt-1">${new Date(d.addedAt).toLocaleDateString('es-MX')}</p>` : ''}
                                         </div>
                                     `;
                                 }).join('')}
@@ -2669,48 +2650,32 @@ async function showUploadFilesModal(projectId, projectName) {
                             <h3 class="text-xl text-gray-300 mb-3">[ ARCHIVOS SUBIDOS ]</h3>
                             <div class="space-y-2">
                                 ${project.deliverables.map((d, idx) => {
-                                    const isAudio = d.type === 'file' && d.filename && /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(d.filename);
-                                    const isVideo = d.type === 'file' && d.filename && /\.(mp4|webm|mov|avi|mkv)$/i.test(d.filename);
                                     const fileUrl = d.url.startsWith('/') ? '${API_BASE_URL}' + d.url : d.url;
+                                    const version = d.version || 1;
                                     
                                     return `
                                         <div class="border border-gray-600 p-3 rounded ${d.approved ? 'border-green-500/50 bg-green-900/10' : ''}">
-                                            <div class="flex justify-between items-start">
+                                            <div class="flex justify-between items-center gap-3">
                                                 <div class="flex-1">
-                                                    <div class="flex items-center gap-2">
+                                                    <div class="flex items-center gap-2 flex-wrap">
                                                         <p class="text-yellow-300 font-bold">${d.title}</p>
+                                                        <span class="text-xs text-gray-400 border border-gray-600 px-2 py-0.5 rounded">v${version}</span>
                                                         ${d.approved ? '<span class="text-xs text-green-300 border border-green-300 px-2 py-0.5 rounded">✓ APROBADO</span>' : ''}
                                                     </div>
-                                                    ${d.type === 'file' ? `<p class="text-xs text-gray-500">${d.originalName || d.filename || 'Archivo'} ${d.fileSize ? `(${(d.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</p>` : '<p class="text-xs text-gray-500">Link externo</p>'}
+                                                    ${d.type === 'file' ? `<p class="text-xs text-gray-500 mt-1">${d.originalName || d.filename || 'Archivo'} ${d.fileSize ? `(${(d.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</p>` : '<p class="text-xs text-gray-500 mt-1">Link externo</p>'}
+                                                    ${d.notes ? `<p class="text-xs text-gray-400 mt-1">${d.notes}</p>` : ''}
+                                                    ${d.addedAt ? `<p class="text-xs text-gray-500 mt-1">${new Date(d.addedAt).toLocaleDateString('es-MX')}</p>` : ''}
                                                 </div>
-                                                <button onclick="deleteDeliverable('${projectId}', ${idx})" class="text-red-400 hover:text-red-300 text-xl ml-2">×</button>
+                                                <div class="flex gap-2">
+                                                    <button onclick="uploadNewVersion('${projectId}', '${projectName}', ${idx}, '${d.title.replace(/'/g, "\\'")}', ${version})" class="nav-link submit-btn px-2 py-1 rounded text-xs whitespace-nowrap">
+                                                        [ + VERSIÓN ]
+                                                    </button>
+                                                    <a href="${fileUrl}" target="_blank" download class="nav-link submit-btn px-2 py-1 rounded text-xs whitespace-nowrap">
+                                                        [ ↓ ]
+                                                    </a>
+                                                    <button onclick="deleteDeliverable('${projectId}', ${idx})" class="text-red-400 hover:text-red-300 text-xl">×</button>
+                                                </div>
                                             </div>
-                                            
-                                            ${isAudio ? `
-                                                <div class="mt-2 mb-2">
-                                                    <audio controls preload="auto" class="w-full">
-                                                        <source src="${fileUrl}" type="audio/mp4">
-                                                        <source src="${fileUrl}" type="audio/mpeg">
-                                                        <source src="${fileUrl}">
-                                                    </audio>
-                                                </div>
-                                            ` : ''}
-                                            
-                                            ${isVideo ? `
-                                                <div class="mt-2 mb-2">
-                                                    <video controls preload="metadata" playsinline class="w-full">
-                                                        <source src="${fileUrl}" type="video/mp4">
-                                                        <source src="${fileUrl}" type="video/webm">
-                                                        <source src="${fileUrl}">
-                                                    </video>
-                                                </div>
-                                            ` : ''}
-                                            
-                                            <a href="${fileUrl}" target="_blank" download class="text-xs text-blue-300 hover:underline break-all block mt-2">
-                                                ${d.type === 'file' ? '[ DESCARGAR ]' : '[ ABRIR LINK ]'}
-                                            </a>
-                                            ${d.notes ? `<p class="text-xs text-gray-400 mt-2">${d.notes}</p>` : ''}
-                                            ${d.addedAt ? `<p class="text-xs text-gray-500 mt-1">${new Date(d.addedAt).toLocaleDateString('es-MX')}</p>` : ''}
                                         </div>
                                     `;
                                 }).join('')}
@@ -2746,6 +2711,63 @@ window.toggleUploadType = function(projectId, type) {
         linkSection.classList.remove('hidden');
     }
 }
+
+// Upload new version of existing deliverable
+window.uploadNewVersion = async function(projectId, projectName, deliverableIndex, originalTitle, currentVersion) {
+    const newVersion = currentVersion + 1;
+    
+    // Create a temporary file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            document.body.removeChild(fileInput);
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('title', originalTitle);
+            formData.append('notes', `Versión ${newVersion}`);
+            formData.append('file', file);
+            formData.append('isLink', 'false');
+            formData.append('version', newVersion.toString());
+            formData.append('replaceIndex', deliverableIndex.toString());
+            
+            console.log('Uploading new version:', newVersion, 'for:', originalTitle);
+            
+            const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Close and reopen modal
+                const existingModal = document.getElementById('upload-modal');
+                if (existingModal) {
+                    existingModal.remove();
+                    await showUploadFilesModal(projectId, projectName);
+                }
+            } else {
+                alert('Error al subir nueva versión: ' + (result.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error uploading new version:', error);
+            alert('Error al subir nueva versión: ' + error.message);
+        } finally {
+            document.body.removeChild(fileInput);
+        }
+    };
+    
+    // Trigger file picker
+    fileInput.click();
+};
 
 // Upload deliverable function
 window.uploadDeliverable = async function(projectId, projectName) {

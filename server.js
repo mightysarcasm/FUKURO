@@ -388,12 +388,14 @@ app.put('/api/projects/:id', (req, res) => {
 app.post('/api/projects/:id/upload', upload.single('file'), (req, res) => {
     try {
         const projectId = req.params.id;
-        const { title, notes, isLink, linkUrl } = req.body;
+        const { title, notes, isLink, linkUrl, version, replaceIndex } = req.body;
         
         console.log('Upload request received:', {
             projectId,
             title,
             isLink,
+            version,
+            replaceIndex,
             hasFile: !!req.file,
             fileName: req.file ? req.file.filename : 'none'
         });
@@ -418,7 +420,8 @@ app.post('/api/projects/:id/upload', upload.single('file'), (req, res) => {
                 url: linkUrl,
                 notes: notes || '',
                 addedAt: new Date().toISOString(),
-                type: 'link'
+                type: 'link',
+                version: version ? parseInt(version) : 1
             };
         } else {
             // It's a file upload
@@ -436,11 +439,28 @@ app.post('/api/projects/:id/upload', upload.single('file'), (req, res) => {
                 originalName: req.file.originalname,
                 fileSize: req.file.size,
                 addedAt: new Date().toISOString(),
-                type: 'file'
+                type: 'file',
+                version: version ? parseInt(version) : 1
             };
         }
         
-        project.deliverables.push(deliverable);
+        // If replaceIndex is provided, replace the existing deliverable
+        if (replaceIndex !== undefined && replaceIndex !== null && replaceIndex !== '') {
+            const idx = parseInt(replaceIndex);
+            if (idx >= 0 && idx < project.deliverables.length) {
+                // Keep the approved status if it exists
+                deliverable.approved = project.deliverables[idx].approved || false;
+                project.deliverables[idx] = deliverable;
+                console.log('Replaced deliverable at index:', idx);
+            } else {
+                console.warn('Invalid replaceIndex, adding as new deliverable');
+                project.deliverables.push(deliverable);
+            }
+        } else {
+            // Add as new deliverable
+            project.deliverables.push(deliverable);
+        }
+        
         project.updatedAt = new Date().toISOString();
         
         if (writeProjects(projects)) {
