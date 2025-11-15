@@ -464,7 +464,11 @@ app.get('/api/drive-stream/:fileId', async (req, res) => {
     const { fileId } = req.params;
     const apiKey = req.query.key; // Optional: API key from query param
     
-    console.log('Drive stream request for:', fileId);
+    console.log('=== DRIVE STREAM REQUEST ===');
+    console.log('File ID:', fileId);
+    console.log('Origin:', req.headers.origin);
+    console.log('Method:', req.method);
+    console.log('Range:', req.headers.range || 'No range header');
     
     try {
         // Initialize Drive API (no auth required for public files)

@@ -472,12 +472,19 @@ function displayFileDetails(index) {
                                 preload="metadata"
                                 playsinline
                                 style="width: 100%; max-height: 500px; background: #000; display: block;"
-                                onloadedmetadata="console.log('Drive video loaded via proxy:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
-                                onerror="handleDriveStreamError(${index}, '${driveVideoId}')"
+                                onloadedmetadata="console.log('✅ Drive video loaded via proxy:', this.videoWidth, 'x', this.videoHeight, 'Duration:', this.duration)"
+                                onloadstart="console.log('🔄 Drive video loading from:', '${API_BASE_URL}/api/drive-stream/${driveVideoId}')"
+                                onerror="console.error('❌ Drive video error:', this.error); handleDriveStreamError(${index}, '${driveVideoId}')"
                             >
                                 <source src="${API_BASE_URL}/api/drive-stream/${driveVideoId}" type="video/mp4">
                                 <p class="text-red-300 p-4">Error al cargar video de Drive. <a href="${work.url}" target="_blank" class="underline">Abrir en Drive</a></p>
                             </video>
+                            <script>
+                                // Debug: Test if backend is reachable
+                                fetch('${API_BASE_URL}/api/drive-stream/${driveVideoId}', { method: 'HEAD' })
+                                    .then(res => console.log('✅ Drive stream endpoint reachable:', res.status, res.headers.get('content-type')))
+                                    .catch(err => console.error('❌ Drive stream endpoint unreachable:', err));
+                            </script>
                             <div class="mt-2 p-3 bg-blue-900/20 border border-blue-300/30 rounded">
                                 <p class="text-xs text-blue-300 mb-2">📹 <strong>Video de Google Drive (Streaming)</strong></p>
                                 <p class="text-xs text-gray-300">✅ Timestamps automáticos disponibles - usa el botón "TIMESTAMP ACTUAL"</p>
