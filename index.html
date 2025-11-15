@@ -270,7 +270,7 @@
                     <div class="flex gap-2 items-center">
                         <button 
                             id="record-voice-btn" 
-                            class="nav-link submit-btn px-6 py-3 rounded-lg text-lg flex items-center gap-2"
+                            class="nav-link submit-btn px-6 py-3 rounded-lg text-xl sm:text-2xl flex items-center gap-2"
                             title="Grabar mensaje de voz"
                         >
                             <span id="record-text">[ GRABAR VOZ ]</span>
@@ -429,15 +429,16 @@
                     </div>
                     
                     <div>
-                        <label for="timeline" class="form-label">[ FECHA DE ENTREGA DESEADA ]</label>
-                        <input type="date" id="timeline" name="timeline" class="form-input text-lg" required>
+                        <label for="timeline" class="form-label">[ FECHA DE ENTREGA DESEADA ] (Opcional)</label>
+                        <input type="date" id="timeline" name="timeline" class="form-input text-lg">
                         <div id="timeline-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
                         <p id="urgency-fee-note" class="text-sm text-red-500 hidden mt-1">> Tarifa de Urgencia Aplicada: +40% sobre el total</p>
                     </div>
 
                     <div>
                         <label for="brief" class="form-label">[ BRIEF / DESCRIPCIÓN DEL PROYECTO ]</label>
-                        <textarea id="brief" name="brief" rows="4" class="form-textarea text-lg" placeholder="Describe la visión, metas y entregables..."></textarea>
+                        <textarea id="brief" name="brief" rows="4" class="form-textarea text-lg" placeholder="Describe la visión, metas y entregables..." required></textarea>
+                        <div id="brief-error" class="form-error hidden text-red-500 text-sm mt-1"></div>
                     </div>
 
                     <div>
@@ -523,6 +524,27 @@
                 <!-- Botón de Imprimir/PNG eliminado -->
                 <button id="accept-quote-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">
                     [ ACEPTAR Y ENVIAR ]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cotización para Chat -->
+    <div id="chat-quote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" id="chat-modal-overlay"></div>
+        <div class="content-box w-full max-w-2xl z-10 p-6 flex flex-col max-h-[90vh]">
+            <div class="text-center mb-4">
+                <h2 class="text-3xl neon-shadow">++ RESUMEN AUTOMÁTICO ++</h2>
+                <p class="text-sm text-gray-300">// Revisa y envía tu cotización.</p>
+            </div>
+            <div id="chat-quote-summary" class="flex-grow overflow-y-auto space-y-3 mb-6 pr-2 text-lg"></div>
+            <div id="chat-modal-status" class="mt-2 text-center text-sm"></div>
+            <div class="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+                <button id="chat-modal-new-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl">
+                    [ NUEVA COTIZACIÓN ]
+                </button>
+                <button id="chat-modal-send-btn" class="nav-link submit-btn w-full px-6 py-3 rounded-lg text-xl bg-yellow-500/20 border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black">
+                    [ ENVIAR ]
                 </button>
             </div>
         </div>
