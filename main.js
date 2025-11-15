@@ -343,31 +343,6 @@ function setupQuoteCalculator() {
     calculateQuote(); // Calcular al cargar
 }
 
-// Función para generar el resumen de cotización desde datos parseados
-// Esta función ahora está obsoleta ya que generateQuoteSummary se movió dentro de handleParseInput
-// function generateQuoteSummary(data) { ... } 
-
-// --- Lógica de Envío de Formulario ---
-function handleGenerateQuote(event) {
-    event.preventDefault();
-    
-    if (!validateForm()) {
-        const firstError = currentForm.querySelector('.invalid');
-        if(firstError) firstError.focus();
-        return;
-    }
-
-    // Llenar campos ocultos de Formspree (email es opcional)
-    const emailValue = document.getElementById('email').value;
-    if (emailValue) {
-        document.getElementById('form-replyto').value = emailValue;
-    }
-    document.getElementById('form-subject').value = document.getElementById('project-name').value || 'Nueva Cotización FUKURO';
-
-    // Generar el resumen de cotización y mostrar el modal
-    generateAndShowQuoteSummary();
-}
-
 /**
  * Genera el resumen de la cotización basado en los valores actuales del formulario
  * y luego muestra el modal.
@@ -547,7 +522,7 @@ function createOwl() {
     pupilL.position.set(-0.4, 0.3, 1.05);
     pupilR.position.set(0.4, 0.3, 1.05);
     owlGroup.add(pupilL);
-    owlGroup.add(pupulR);
+    owlGroup.add(pupilR);
 
     const beakGeo = new THREE.ConeGeometry(0.2, 0.4, 8);
     const beak = new THREE.Mesh(beakGeo, material);
@@ -660,6 +635,7 @@ async function parseUserInputWithGPT(userInput, history = [], apiKey) {
         throw new Error('OpenAI API Key no configurada. Por favor, configura VITE_OPENAI_API_KEY o ingresa tu API key.');
     }
 
+    // --- CÓDIGO ACTUALIZADO: Prompt de sistema más estricto con DURACIÓN ---
     const systemPrompt = `Eres un asistente que extrae información de solicitudes de cotización para servicios de audio/video. 
 Analiza el texto del usuario y extrae la siguiente información en formato JSON:
 
@@ -690,10 +666,14 @@ Analiza el texto del usuario y extrae la siguiente información en formato JSON:
 
 CAMPOS REQUERIDOS para generar cotización: projectName (nombre del proyecto) y brief (descripción del proyecto).
 name, email, timeline y serviceType son OPCIONALES - solo extrae si se mencionan explícitamente.
-Si algún campo no está presente en el texto, usa null. Para fechas, intenta interpretar usando el año actual. Ejemplos: "15 de diciembre" -> año actual-12-15, "25 noviembre" -> año actual-11-25, "mañana" -> fecha de mañana. SIEMPRE usa el año actual, nunca uses años pasados como 2024.
-Para serviceType, determina si menciona audio, video, o ambos. Si no se menciona, deja null.
-Si el usuario está proporcionando información adicional en una conversación, solo extrae los campos nuevos o actualizados.
-Responde SOLO con el JSON, sin explicaciones adicionales.`;
+Si algún campo no está presente en el texto, usa null. 
+
+INSTRUCCIONES CLAVE:
+1. DURACIÓN: Si se selecciona "Audio" o "Video" pero no se proporciona la duración (quantity, minutes, seconds), debes responder con el siguiente mensaje de seguimiento antes de generar el JSON: "Por favor, especifica la duración de tu contenido (minutos y segundos) y la cantidad de archivos para poder calcular la cotización." No generes el JSON si falta la duración de un servicio seleccionado.
+2. FECHA: SIEMPRE utiliza el año actual (2025) para fechas sin año, o el siguiente (2026) si la fecha del mes ya pasó en 2025. NUNCA uses años pasados como 2024 o 2023.
+3. CONVERSACIÓN: Si el usuario está proporcionando información adicional, solo extrae los campos nuevos o actualizados.
+4. RESPUESTA: Responde SOLO con el JSON o SOLO con el mensaje de seguimiento de duración, sin explicaciones adicionales.`;
+    // --- FIN DE CÓDIGO ACTUALIZADO: Prompt de sistema más estricto con DURACIÓN ---
 
     // Construir mensajes con historial
     const messages = [
@@ -731,6 +711,14 @@ Responde SOLO con el JSON, sin explicaciones adicionales.`;
         const data = await response.json();
         const content = data.choices[0].message.content.trim();
         
+        // --- CÓDIGO ACTUALIZADO: Manejar la respuesta que NO es JSON (mensaje de seguimiento) ---
+        // Verificar si la respuesta es el mensaje de seguimiento de duración
+        if (content.startsWith("Por favor, especifica la duración de tu contenido")) {
+             // Devolver un objeto especial para indicar que se necesita más información
+            return { specialResponse: content };
+        }
+        // --- FIN DE CÓDIGO ACTUALIZADO ---
+        
         // Intentar extraer JSON del contenido (puede venir con markdown)
         let jsonMatch = content.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
@@ -744,6 +732,7 @@ Responde SOLO con el JSON, sin explicaciones adicionales.`;
     }
 }
 
+// --- CÓDIGO ACTUALIZADO: Corrección lógica para parsear la fecha ---
 function parseDate(dateStr) {
     if (!dateStr) return null;
     
@@ -752,34 +741,50 @@ function parseDate(dateStr) {
         return dateStr;
     }
     
-    // Intentar parsear la fecha
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-        // Si el año es menor a 2000, probablemente es un año mal parseado, usar año actual
-        let year = date.getFullYear();
-        const currentYear = new Date().getFullYear();
-        if (year < 2000) {
-            year = currentYear;
-        }
-        
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Intentar crear la fecha usando el año actual (para manejar "4 de diciembre")
+    let parsedDate = new Date(`${dateStr} ${currentYear}`);
+    
+    // Si el parseo inicial falló, o resultó en una fecha inválida, intentamos de nuevo.
+    if (isNaN(parsedDate.getTime())) {
+        parsedDate = new Date(dateStr);
     }
     
-    // Si no se puede parsear, intentar con el año actual
-    // Ejemplo: "25 noviembre" -> "2025-11-25"
-    const currentYear = new Date().getFullYear();
-    const dateWithYear = new Date(`${dateStr} ${currentYear}`);
-    if (!isNaN(dateWithYear.getTime())) {
-        const year = dateWithYear.getFullYear();
-        const month = String(dateWithYear.getMonth() + 1).padStart(2, '0');
-        const day = String(dateWithYear.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    if (isNaN(parsedDate.getTime())) {
+        return null; // No se pudo parsear
     }
     
-    return null;
+    // Resetear la hora para comparaciones de día
+    parsedDate.setHours(0, 0, 0, 0); 
+
+    // Si el año parseado es menor al actual, forzarlo al actual.
+    if (parsedDate.getFullYear() < currentYear) {
+         parsedDate.setFullYear(currentYear);
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Limpiar hora para la comparación
+
+    // Si la fecha resultante es anterior al día de hoy, asumimos que se refiere al próximo año.
+    if (parsedDate < today) {
+         const newYear = currentYear + 1;
+         
+         // Recrear la fecha para evitar problemas de meses/días bisiestos
+         const month = parsedDate.getMonth();
+         const day = parsedDate.getDate();
+         parsedDate = new Date(newYear, month, day);
+    }
+    
+    // Formatear la fecha final (YYYY-MM-DD)
+    const finalMonth = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const finalDay = String(parsedDate.getDate()).padStart(2, '0');
+    const finalYear = parsedDate.getFullYear();
+    
+    return `${finalYear}-${finalMonth}-${finalDay}`;
 }
+// --- FIN DE CÓDIGO ACTUALIZADO ---
 
 function fillFormFromParsedData(data) {
     // Llenar campos básicos
@@ -926,7 +931,19 @@ async function handleParseInput() {
     try {
         console.log('Calling parseUserInputWithGPT with API key:', apiKey ? 'present' : 'missing'); // Debug
         // Llamar a GPT con historial de conversación
-        const parsedData = await parseUserInputWithGPT(inputText, conversationHistory, apiKey);
+        const result = await parseUserInputWithGPT(inputText, conversationHistory, apiKey);
+        
+        // --- Manejar la respuesta especial de duración (o cualquier otro mensaje de seguimiento) ---
+        if (result.specialResponse) {
+             addChatMessage(result.specialResponse, false);
+             chatStatus.innerHTML = `<p class="text-yellow-300">// ${result.specialResponse}</p>`;
+             parseBtn.disabled = false;
+             parseBtn.textContent = '[ SEND ADDITIONAL INFO ]';
+             return;
+        }
+        // --- Fin de manejo de respuesta especial ---
+        
+        const parsedData = result;
         console.log('Parsed data:', parsedData); // Debug
         
         // Combinar con datos anteriores si existen
@@ -953,15 +970,13 @@ async function handleParseInput() {
             return;
         }
         
-        // ** INICIO DE CORRECCIÓN **
-        // 1. Mostrar el formulario (en caso de que estuviera oculto)
+        // ** Mostrar el formulario **
         form.classList.remove('hidden'); 
         
         // 2. Llenar formulario con datos combinados
         fillFormFromParsedData(mergedData);
         
         // 3. Calcular la cotización automáticamente
-        // (Esto ya se hace dentro de fillFormFromParsedData, pero lo dejamos como fallback)
         setupQuoteCalculator(); 
         
         // Ocultar chat
@@ -971,7 +986,6 @@ async function handleParseInput() {
         setTimeout(() => {
             generateAndShowQuoteSummary();
         }, 100); 
-        // ** FIN DE CORRECCIÓN **
         
         // Limpiar historial para próxima vez
         conversationHistory = [];
@@ -1000,7 +1014,7 @@ function resetToChat() {
     chatMessages.innerHTML = '<div class="text-sm text-gray-300/70">// Escribe libremente sobre tu proyecto. Analizaré tu mensaje y llenaré el formulario automáticamente.</div>';
     userInput.value = '';
     
-    // ** CORRECCIÓN: Ocultar el formulario al volver al chat **
+    // ** Ocultar el formulario al volver al chat **
     form.classList.add('hidden'); 
     
     chatInterface.classList.remove('hidden');
@@ -1067,18 +1081,29 @@ function initSpeechRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        
+        // ** CAMBIO PARA GRABACIÓN MÁS LARGA **
+        recognition.continuous = true; 
+        
+        recognition.interimResults = false; 
         recognition.lang = 'es-MX'; // Español de México
         
         recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            const userInput = document.getElementById('user-input');
-            if (userInput) {
-                // Agregar el texto transcrito al textarea
-                userInput.value += (userInput.value ? ' ' : '') + transcript;
+            // Cuando es continuo, se dispara múltiples veces. 
+            // Usamos el resultado final de la última tanda.
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    transcript += event.results[i][0].transcript;
+                }
             }
-            stopRecording();
+            
+            const userInput = document.getElementById('user-input');
+            if (userInput && transcript.trim() !== '') {
+                 // Reemplazar o concatenar (reemplazar para evitar repetición por fallas en la API)
+                userInput.value = transcript; 
+            }
+            // NO llamamos a stopRecording aquí. Solo se detiene con el botón.
         };
         
         recognition.onerror = (event) => {
@@ -1091,6 +1116,7 @@ function initSpeechRecognition() {
         };
         
         recognition.onend = () => {
+            // El onend se dispara cuando el usuario presiona detener O cuando el motor se rinde.
             stopRecording();
         };
     } else {
