@@ -1,11 +1,28 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+// Importar API key desde config (gitignored)
+let CONFIG_API_KEY = null;
+// Cargar config de forma asíncrona
+(async () => {
+    try {
+        const config = await import('./config.js');
+        CONFIG_API_KEY = config.OPENAI_API_KEY;
+    } catch (e) {
+        console.log('config.js not found, will use other methods');
+    }
+})();
+
 // --- Configuración de API ---
 // IMPORTANTE: Para producción, usa un backend proxy para proteger tu API key
 // Por ahora, puedes configurar tu API key aquí o usar una variable de entorno
 function getOpenAIApiKey() {
-    // Primero intentar variable de entorno
+    // Primero intentar desde config.js (gitignored)
+    if (CONFIG_API_KEY && CONFIG_API_KEY.trim() !== '') {
+        return CONFIG_API_KEY;
+    }
+    
+    // Luego intentar variable de entorno
     if (import.meta.env && import.meta.env.VITE_OPENAI_API_KEY) {
         return import.meta.env.VITE_OPENAI_API_KEY;
     }
